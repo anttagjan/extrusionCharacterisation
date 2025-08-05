@@ -1,7 +1,7 @@
 function getSumAverageCVHeatmap(filepath)
 
-    load(fullfile(filepath,'data_transformed.mat'), "procruste_transformed");
-    load(fullfile(filepath,'heatmap_data.mat'), "allValidN_full","nBins","timeStep");
+    load(fullfile(filepath,'dataframes','data_transformed.mat'), "procruste_transformed");
+    load(fullfile(filepath,'dataframes','heatmap_data.mat'), "allValidN_full","nBins","timeStep");
 
     movies = unique(procruste_transformed(:,3));
     nMovies = max(movies);
@@ -17,11 +17,16 @@ function getSumAverageCVHeatmap(filepath)
     xEdges = linspace(min(Xall)-marginX, max(Xall)+marginX, nBins+1);
     yEdges = linspace(min(Yall)-marginY, max(Yall)+marginY, nBins+1);
 
-    time = procruste_transformed(:,4);
+    xCenters = (xEdges(1:end-1) + xEdges(2:end))/2;
+    yCenters = (yEdges(1:end-1) + yEdges(2:end))/2;
+
+    time = round(procruste_transformed(:,4),4);
+    tMin = min(time);
+    tMax = max(time);
 
     nTimeBins = size(allValidN_full, 2);
     timeBins = min(time):timeStep:max(time)+timeStep;
-    timeBins = linspace(tMin, tMax, nTimeBins+1);
+    % timeBins = linspace(tMin, tMax, nTimeBins+1);
     timeCenters = timeBins(1:end-1) + timeStep / 2;
 
     % Create figure and axis
@@ -109,23 +114,30 @@ function getSumAverageCVHeatmap(filepath)
 
         % Choose which to display
         val = popup.Value;
-        switch val
-            case 1  % CV
-                dataToShow = cvHist;
-                titleStr = sprintf('CV [%.2f – %.2f] h', tStart, tEnd);
-                cmap = customCvColormap();
-                clim = [0 300];
-            case 2  % Mean
-                dataToShow = meanHist;
-                titleStr = sprintf('Mean [%.2f – %.2f] h', tStart, tEnd);
-                cmap = customRedColormap();
-                clim = [0 60];
-            case 3  % Sum
-                dataToShow = sumHist;
-                titleStr = sprintf('Sum [%.2f – %.2f] h', tStart, tEnd);
-                cmap = customRedColormap();
-                clim = [0 60];
-        end
+switch val
+    case 1  % CV
+        dataToShow = cvHist;
+        titleStr = sprintf('CV [%.2f – %.2f] h', tStart, tEnd);
+        cmap = customCvColormap();
+    case 2  % Mean
+        dataToShow = meanHist;
+        titleStr = sprintf('Mean [%.2f – %.2f] h', tStart, tEnd);
+        cmap = customRedColormap();
+    case 3  % Sum
+        dataToShow = sumHist;
+        titleStr = sprintf('Sum [%.2f – %.2f] h', tStart, tEnd);
+        cmap = customRedColormap();
+end
+
+% Compute color limits dynamically based on visible data
+nonNanVals = dataToShow(~isnan(dataToShow));
+if isempty(nonNanVals)
+    clim = [0 1];  % fallback
+else
+    clim = [min(nonNanVals), max(nonNanVals)];
+    % Optional: soften extremes using percentiles
+    clim = prctile(nonNanVals, [2 98]);
+end
 
         % Display
         cla(ax, 'reset');
