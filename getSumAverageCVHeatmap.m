@@ -114,19 +114,23 @@ function getSumAverageCVHeatmap(filepath)
 
         % Choose which to display
         val = popup.Value;
+        cb = colorbar;
 switch val
     case 1  % CV
         dataToShow = cvHist;
         titleStr = sprintf('CV [%.2f – %.2f] h', tStart, tEnd);
         cmap = customCvColormap();
+        cb.Label.String = 'Coefficient of Variation (%)';
     case 2  % Mean
         dataToShow = meanHist;
         titleStr = sprintf('Mean [%.2f – %.2f] h', tStart, tEnd);
         cmap = customRedColormap();
+        cb.Label.String = 'average no. extrusions';
     case 3  % Sum
         dataToShow = sumHist;
         titleStr = sprintf('Sum [%.2f – %.2f] h', tStart, tEnd);
         cmap = customRedColormap();
+        cb.Label.String = 'no. extrusions';
 end
 
 % Compute color limits dynamically based on visible data
