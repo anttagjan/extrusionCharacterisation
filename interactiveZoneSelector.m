@@ -7,6 +7,17 @@ function selectedBins = interactiveZoneSelector(heatmapSum, xCenters, yCenters, 
 
     imagesc(xCenters, yCenters, heatmapSum);
     axis xy
+    xIndxs = xCenters([1 5:5:nBins]);
+    yIndxs = yCenters([1 5:5:nBins]);
+    set(gca, 'YDir', 'reverse');  % This flips Y axis so row 1 is at top 
+    set(gca, 'XTick', xIndxs, 'YTick', yIndxs);
+    set(gca, 'XTickLabel', [1 5:5:nBins], 'YTickLabel', [1 5:5:nBins]);
+    % So y increases going down (bin 1 top)
+    bufferX = (xCenters(end) - xCenters(1)) * 0.05;  % 5% margin
+    bufferY = (yCenters(end) - yCenters(1)) * 0.05;
+    
+    xlim([xCenters(1) - bufferX, xCenters(end) + bufferX]);
+    ylim([yCenters(1) - bufferY, yCenters(end) + bufferY]);
 
     for i = 1:nBins
         for j = 1:nBins
