@@ -1,4 +1,4 @@
-function getExtrusionHeatmap(filepath,peaks,procruste_transformed,masks_transformed)
+function [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,peaks,procruste_transformed,masks_transformed)
 %getExtrusionHeatmap Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -12,7 +12,8 @@ for nMovie= 1: max(movies)
 end
 
 time = unique(procruste_transformed(:,4));
-timeStep = 5/60;
+% timeStep = 5/60;
+timeStep = 0.5;
 %tol = 1e-6; % tolerance when comparing time values
 nBins = 30;
 timeBins = min(time):timeStep:max(time)+timeStep;
