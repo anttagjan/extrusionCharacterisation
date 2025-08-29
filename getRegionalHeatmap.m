@@ -8,10 +8,10 @@ cmap = [linspace(1,1,nColors)', linspace(1,0,nColors)', linspace(1,0,nColors)'];
 globalMax = prctile(heatmapSum(:), 100);
 
 zoneNames = {'Midline', 'Posterior', 'Up', 'Down'};
-zoneColors = [0 0 1; 1 0 0; 0 1 0; 1 1 0]; % blue, red, green, yellow
+zoneColors = [0 0 1; 0.7 0.7 0.7; 0 1 0; 1 1 0]; % blue, orange, green, yellow
 
 time = round(procruste_transformed(:,4),4);
-timeBins = min(time):timeStep:max(time);
+timeBins = floor(min(time)):timeStep:ceil(max(time));
 
 Xall = procruste_transformed(:,1);
 Yall = procruste_transformed(:,2);
@@ -60,7 +60,7 @@ end
 [rows, cols] = size(allValidN_full);  % rows=15, cols=57
 
 % Step 2: Initialize a logical mask — true where all are NaN
-always_nan_mask = true(30, 30);  % start assuming all are NaN
+always_nan_mask = true(nBins, nBins);  % start assuming all are NaN
 
 % Step 3: Loop through the cell array and update the mask
 for i = 1:rows
@@ -78,8 +78,8 @@ title('Bins that are always NaN in all cells');
 
 %% Excel files
 % === Combined Excel with Multi-Sheets ===
-excelFileName = strcat('HistogramExtrusions_',num2str(round(timeStep*60,4)),'MinTime',num2str(max(movies)),'Movies_Summary.xlsx');
-excelFileNameNaN = strcat('HistogramNormalisedExtrusions_',num2str(round(timeStep*60,4)),'MinTime',num2str(max(movies)),'Movies_Summary.xlsx');
+excelFileName = strcat('HistogramExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_Summary.xlsx');
+excelFileNameNaN = strcat('HistogramNormalisedExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_Summary.xlsx');
 nZones = size(selectedBins,3);
 summaryCounts = zeros(length(timeBins), max(movies));
 summaryNormCounts = zeros(length(timeBins), max(movies));
@@ -91,10 +91,13 @@ for zone = 1:nZones
     zoneMask(always_nan_mask==1)=0;
     countsPerMovie = zeros(length(timeBins), max(movies));
     normCountsPerMovie = zeros(length(timeBins), max(movies));
+    if sum(sum(zoneMask))==0
+        continue
+    end
 
     for nTime = 1:length(timeBins)
-        total = 0;
-        totalNaN = 0;
+        count = 0;
+        normCount= 0;
         for nMovie = 1:max(movies)
             histo = allValidN_full{nMovie,nTime};
                 % Count values
@@ -161,7 +164,7 @@ Tsum_nan = array2table(summaryNormCounts, 'VariableNames', filenames);
 Tsum_nan.Time = timeBins(:);
 Tsum_nan = movevars(Tsum_nan, 'Time', 'Before', 1);
 totalRowNorm = array2table(nan(1, width(Tsum_nan)), 'VariableNames', Tsum_nan.Properties.VariableNames);
-totalRowNorm{1,2:end} = sum(summaryNormCounts,1); 
+totalRowNorm{1,2:end} = sum(summaryNormCounts, 1, 'omitnan'); 
 totalRowNorm.Time = "Total sum";
 TsumNaNFinal = [Tsum_nan; totalRowNorm];
 

@@ -16,7 +16,7 @@ time = unique(procruste_transformed(:,4));
 timeStep = 0.5;
 %tol = 1e-6; % tolerance when comparing time values
 nBins = 30;
-timeBins = min(time):timeStep:max(time)+timeStep;
+timeBins = floor(min(time)):timeStep:ceil(max(time))+timeStep;
 
 Xall = procruste_transformed(:,1);
 Yall = procruste_transformed(:,2);
@@ -29,7 +29,7 @@ marginY = 0.01 * (max(Yall) - min(Yall));
 xEdges = linspace(min(Xall)-marginX, max(Xall)+marginX, nBins+1);
 yEdges = linspace(min(Yall)-marginY, max(Yall)+marginY, nBins+1);
 
-if ~exist(fullfile(filepath,'dataframes','heatmap_data.mat'),'file')
+if ~exist(fullfile(filepath,'dataframes',strcat('heatmap_data_',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')),'file')
     allN_full = cell(max(movies), length(timeBins)-1);
     allValidN_full = cell(max(movies), length(timeBins)-1);
     allMaxCount = cell(max(movies), length(timeBins)-1);
@@ -126,10 +126,10 @@ if ~exist(fullfile(filepath,'dataframes','heatmap_data.mat'),'file')
             heatmapSum = heatmapSum + current;
         end
     end
-    save(fullfile(filepath,'dataframes','heatmap_data.mat'),"heatmapSum","nBins","timeStep","allN_full","allValidN_full");
+    save(fullfile(filepath,'dataframes',strcat('heatmap_data_',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')),"heatmapSum","nBins","timeStep","allN_full","allValidN_full");
 
 else
-    load(fullfile(filepath,'dataframes','heatmap_data.mat'));
+    load(fullfile(filepath,'dataframes',strcat('heatmap_data_',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')));
 end
 
 %% Display

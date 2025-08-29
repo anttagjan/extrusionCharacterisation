@@ -1,8 +1,4 @@
-function getSumAverageCVHeatmap(filepath)
-
-    load(fullfile(filepath,'dataframes','data_transformed.mat'), "procruste_transformed");
-    load(fullfile(filepath,'dataframes','heatmap_data.mat'), "allValidN_full","nBins","timeStep");
-
+function getSumAverageCVHeatmap(procruste_transformed,allValidN_full,nBins,timeStep)
     movies = unique(procruste_transformed(:,3));
     nMovies = max(movies);
 
@@ -25,8 +21,7 @@ function getSumAverageCVHeatmap(filepath)
     tMax = max(time);
 
     nTimeBins = size(allValidN_full, 2);
-    timeBins = min(time):timeStep:max(time)+timeStep;
-    % timeBins = linspace(tMin, tMax, nTimeBins+1);
+    timeBins = floor(min(time)):timeStep:ceil(max(time));
     timeCenters = timeBins(1:end-1) + timeStep / 2;
 
     % Create figure and axis
@@ -85,7 +80,7 @@ function getSumAverageCVHeatmap(filepath)
         for nMovie = 1:nMovies
             sumHisto = zeros(nBins, nBins);
             validHisto = zeros(nBins);
-            for t = 1:nTimeBins
+            for t = 1:nTimeBins-1
                 currentTime = timeCenters(t);
                 if currentTime >= tStart && currentTime < tEnd + eps
                     h = allValidN_full{nMovie, t};

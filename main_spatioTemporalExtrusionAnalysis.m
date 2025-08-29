@@ -113,7 +113,6 @@ else
     [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,timeTable,procruste_transformed,masks_transformed);
 end
 
-% alignment_map(filenames,procruste_transformed,landmarks_transformed)
-% getSumAverageCVHeatmap(filepath);
-getRegionalHeatmap(filepath,filenames,procruste_transformed,allValidN_full,heatmapSum,nBins,timeStep)
+%getSumAverageCVHeatmap(procruste_transformed,allValidN_full,nBins,timeStep);
+getRegionalHeatmap(filepath,filenames,procruste_transformed,allValidN_full,heatmapSum,nBins,timeStep);
 
