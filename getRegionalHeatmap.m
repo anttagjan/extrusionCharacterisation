@@ -8,7 +8,7 @@ cmap = [linspace(1,1,nColors)', linspace(1,0,nColors)', linspace(1,0,nColors)'];
 globalMax = prctile(heatmapSum(:), 100);
 
 zoneNames = {'Midline', 'Posterior', 'Up', 'Down'};
-zoneColors = [0 0 1; 0.7 0.7 0.7; 0 1 0; 1 1 0]; % blue, orange, green, yellow
+zoneColors = [0 0 1; 1 0.5 0; 0 1 0; 1 1 0]; % blue, orange, green, yellow
 
 time = round(procruste_transformed(:,4),4);
 timeBins = floor(min(time)):timeStep:ceil(max(time));
