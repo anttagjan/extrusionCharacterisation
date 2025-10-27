@@ -13,7 +13,7 @@ end
 
 time = unique(procruste_transformed(:,4));
 % timeStep = 5/60;
-timeStep = 0.5;
+timeStep = 1;
 %tol = 1e-6; % tolerance when comparing time values
 nBins = 30;
 timeBins = floor(min(time)):timeStep:ceil(max(time))+timeStep;
