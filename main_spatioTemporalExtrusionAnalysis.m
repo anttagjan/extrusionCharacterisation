@@ -1,21 +1,43 @@
 close all
 %% load data
 filepath=('D:\Antonio\extrusion systematic characterisation\');
-timeTable = readtable(fullfile(filepath,'dataframes','speed_peaks.xlsx'));
+timeDataframe = readtable(fullfile(filepath,'dataframes','timeAlignment.xlsx'));
 
 %% Initialization
-nf = dir(fullfile(filepath,'results','*landmarks.zip'));
-nf_extrusion = dir(fullfile(filepath,'results','*cell_death.zip'));
+nf = dir(fullfile(filepath,'input','*landmarks.zip'));
+nf_extrusion = dir(fullfile(filepath,'input','*cell_death.zip'));
 nf_masks = dir(fullfile(filepath,'masks','*.tif'));
 
 filenames = {nf_extrusion.name};
+
+%% Ask user for time alignment method
+choice = questdlg('Select time alignment method:', ...
+                  'Time Alignment', ...
+                  'Speed peaks', 'Division peaks', 'Speed peaks');
+
+switch choice
+    case 'Speed peaks'
+        selectedColumn = 'speed_peaks';
+        selectedLandmarks = 'speed';
+    case 'Division peaks'
+        selectedColumn = 'division_peaks';
+        selectedLandmarks = 'division';
+    otherwise
+        error('No alignment method selected. Script aborted.');
+end
+
+movieNames = timeDataframe{:,1};  
+alignmentValues = timeDataframe{:, selectedColumn};
+
+timeTable = table(movieNames, alignmentValues, ...
+                  'VariableNames', {'name', 'peaks'});
 
 if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file')
     %% Extraction of coordinates (landmarks, cell death events, masks)
     % Extraction space landmarks
     k = 0; landmarks = [];
     for i = 1:length(nf)
-        fname = fullfile(filepath,'results',nf(i).name);
+        fname = fullfile(filepath,'input',selectedLandmarks,nf(i).name);
         Lands = ReadImageJROI(fname);
         L(i) = length(Lands);
         for j = 1:L(i)
@@ -28,7 +50,7 @@ if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file')
     % Extraction extrusion coordinates
     k = 0; coordinates = [];
     for i = 1:length(nf_extrusion)
-        fname = fullfile(filepath,'results',nf_extrusion(i).name);
+        fname = fullfile(filepath,'input',nf_extrusion(i).name);
         ROI = ReadImageJROI(fname);
         L(i) = length(ROI);
         for j = 1:L(i)
@@ -110,6 +132,7 @@ if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file')
     [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,timeTable,procruste_transformed,masks_transformed);
 else
     load(fullfile(filepath,'dataframes','data_transformed.mat'));
+    % alignment_map(filenames,procruste_transformed,landmarks_transformed)
     [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,timeTable,procruste_transformed,masks_transformed);
 end
 
