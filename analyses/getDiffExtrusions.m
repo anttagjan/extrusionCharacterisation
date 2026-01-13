@@ -3,10 +3,10 @@ function [diffData,allShiftedDiffData,meanData,sdData]=getDiffExtrusions()
     % y aplica un desplazamiento aleatorio (random shift) entre cada par de hojas.
 
     % Leer nombres de hojas
-    filepath='D:\Antonio\extrusion systematic characterisation\dataframes\only ROI PosteriorLeft Vs PosteriorRight';
-    filename='\HistogramNormalisedExtrusions_30x30_1hStep15Movies_Summary.xlsx';
-    filename=strcat(filepath,filename);
-    [~, sheetNames] = xlsfinfo(filename);
+    filepath=uigetdir('D:\Antonio\extrusion systematic characterisation\dataframes\division\');
+    filename=uigetfile('D:\Antonio\extrusion systematic characterisation\dataframes\division\');
+    filefolder=fullfile(filepath,filename);
+    [~, sheetNames] = xlsfinfo(filefolder);
     nSheets = numel(sheetNames)-1;
 
     fprintf('Excel file "%s" have %d sheets.\n', filename, nSheets);
@@ -22,8 +22,8 @@ function [diffData,allShiftedDiffData,meanData,sdData]=getDiffExtrusions()
         fprintf('\nProcess sheets "%s" y "%s"...\n', sheet1, sheet2);
 
         % read_data
-        data1 = readmatrix(filename, 'Sheet', sheet1);
-        data2 = readmatrix(filename, 'Sheet', sheet2);
+        data1 = readmatrix(filefolder, 'Sheet', sheet1);
+        data2 = readmatrix(filefolder, 'Sheet', sheet2);
         time = data1(:,1);
         data1=data1(:,2:end);
         data2=data2(:,2:end);

@@ -126,10 +126,10 @@ if ~exist(fullfile(filepath,'dataframes',strcat('heatmap_data_',num2str(nBins),'
             heatmapSum = heatmapSum + current;
         end
     end
-    save(fullfile(filepath,'dataframes',strcat('heatmap_data_',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')),"heatmapSum","nBins","timeStep","allN_full","allValidN_full");
+    save(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAlignment',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')),"heatmapSum","nBins","timeStep","allN_full","allValidN_full");
 
 else
-    load(fullfile(filepath,'dataframes',strcat('heatmap_data_',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')));
+    load(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAlignment',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')));
 end
 
 %% Display
