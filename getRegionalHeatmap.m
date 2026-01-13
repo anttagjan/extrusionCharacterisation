@@ -27,7 +27,6 @@ yCenters = (yEdges(1:end-1) + yEdges(2:end))/2;
 zoneFile = fullfile(filepath,"dataframes","selectedZones",strcat(selectedLandmarks,'_selected_zones.mat'));
 selectedBins = false(nBins, nBins, 4);
 useSavedZones = false;
-
 if exist(zoneFile, 'file')
     userChoice = questdlg('Previously selected zones found. Load and skip selection?', ...
         'Load Saved Zones', 'Yes', 'No', 'Yes');
@@ -78,8 +77,8 @@ title('Bins that are always NaN in all cells');
 
 %% Excel files
 % === Combined Excel with Multi-Sheets ===
-excelFileName = strcat('HistogramExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_Summary.xlsx');
-excelFileNameNaN = strcat('HistogramNormalisedExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_Summary.xlsx');
+excelFileName = strcat('HistogramExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_',selectedLandmarks,'Alignment_Summary.xlsx');
+excelFileNameNaN = strcat('HistogramNormalisedExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_',selectedLandmarks,'Alignment_Summary.xlsx');
 nZones = size(selectedBins,3);
 summaryCounts = zeros(length(timeBins), max(movies));
 summaryNormCounts = zeros(length(timeBins), max(movies));
