@@ -4,7 +4,6 @@ filepath=('D:\Antonio\extrusion systematic characterisation\');
 timeDataframe = readtable(fullfile(filepath,'dataframes','timeAlignment.xlsx'));
 
 %% Initialization
-nf = dir(fullfile(filepath,'input','*landmarks.zip'));
 nf_extrusion = dir(fullfile(filepath,'input','*cell_death.zip'));
 nf_masks = dir(fullfile(filepath,'masks','*.tif'));
 
@@ -17,10 +16,10 @@ choice = questdlg('Select time alignment method:', ...
 
 switch choice
     case 'Speed peaks'
-        selectedColumn = 'speed_peaks';
+        selectedColumn = 'speedPeaks';
         selectedLandmarks = 'speed';
     case 'Division peaks'
-        selectedColumn = 'division_peaks';
+        selectedColumn = 'divisionPeaks';
         selectedLandmarks = 'division';
     otherwise
         error('No alignment method selected. Script aborted.');
@@ -32,7 +31,10 @@ alignmentValues = timeDataframe{:, selectedColumn};
 timeTable = table(movieNames, alignmentValues, ...
                   'VariableNames', {'name', 'peaks'});
 
-if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file')
+% Load landmarks depending on the time alignment
+nf = dir(fullfile(filepath,'input',selectedLandmarks,'*landmarks.zip'));
+
+if ~exist(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_transformed.mat')),'file')
     %% Extraction of coordinates (landmarks, cell death events, masks)
     % Extraction space landmarks
     k = 0; landmarks = [];
@@ -58,6 +60,9 @@ if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file')
             coordinates(k,1:2) = ROI{1,j}.mfCoordinates;
             coordinates(k,3) = i;
             coordinates(k,4) = ROI{1,j}.vnPosition(3);
+            if coordinates(k,4) == 1
+                coordinates(k,4) = ROI{1,j}.vnPosition(2);
+            end
         end
     end
 
@@ -127,15 +132,18 @@ if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file')
     end
     procruste_transformed = [procruste_transformed, timeCoordinates_transformed];
 
-    save(strcat(filepath,'dataframes','data_transformed.mat'),'procruste_transformed', 'landmarks_transformed');
-    save(strcat(filepath,'dataframes','masks_transformed.mat'),'masks_transformed', '-v7.3');
-    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,timeTable,procruste_transformed,masks_transformed);
+    save(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_transformed.mat')),'procruste_transformed','landmarks_transformed','masks_transformed','-v7.3');
+    
+    % if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file') 
+    %     save(strcat(filepath,'dataframes','masks_transformed.mat'),'masks_transformed', '-v7.3');
+    % end
+    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,selectedLandmarks,timeTable,procruste_transformed,masks_transformed);
+    alignment_map(filenames,procruste_transformed,landmarks_transformed)
 else
-    load(fullfile(filepath,'dataframes','data_transformed.mat'));
-    % alignment_map(filenames,procruste_transformed,landmarks_transformed)
-    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,timeTable,procruste_transformed,masks_transformed);
+    load(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_transformed.mat')));
+    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,selectedLandmarks,timeTable,procruste_transformed,masks_transformed);
 end
 
 %getSumAverageCVHeatmap(procruste_transformed,allValidN_full,nBins,timeStep);
-getRegionalHeatmap(filepath,filenames,procruste_transformed,allValidN_full,heatmapSum,nBins,timeStep);
+getRegionalHeatmap(filepath,filenames,selectedLandmarks,procruste_transformed,allValidN_full,heatmapSum,nBins,timeStep);
 
