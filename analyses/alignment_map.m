@@ -52,7 +52,7 @@ caxis([tMin tMax]);  % fixe échelle couleur
 cb.Ticks = linspace(tMin,tMax,5);
 cb.Label.String = 'relative time (h)';
 
-% Sliders
+% Time Sliders
 frameStep = 5 / 60;  % 5 minutes in hours
 sliderRange = tMax - tMin;
 stepSmall = frameStep / sliderRange;
@@ -76,26 +76,64 @@ labelMax = uicontrol('Style','text', 'Units','normalized', ...
     'Position', [0.55 0.07 0.3 0.03], ...
     'String', sprintf('max time (h): %.2f', tMax));
 
-% Checkboxes pour les fichiers
-checkboxHeight = 0.04;
-checkboxWidth = 0.15;
-checkboxLeft = 0.02;
-checkboxBottomStart = 0.85;
-checkboxSpacing = 0.06;
-checkboxes = gobjects(length(filenames),1);
-for i = 1:length(filenames)
-    cbBottom = checkboxBottomStart - (i-1)*checkboxSpacing;
-    checkboxes(i) = uicontrol('Style','checkbox', 'String', filenames{i}, ...
-        'Units','normalized', 'Position', [checkboxLeft cbBottom checkboxWidth checkboxHeight], ...
-        'Value', 1, ...
-        'Callback', @(src,~) updateScatter());
+%% ===== Scrollable checkbox panel =====
+nFiles = length(filenames);
+
+panelLeft   = 0.02;
+panelBottom = 0.15;
+panelWidth  = 0.20;
+panelHeight = 0.65;
+
+checkboxHeight  = 0.05;
+checkboxSpacing = 0.01;
+contentHeight = nFiles * (checkboxHeight + checkboxSpacing);
+
+panel = uipanel('Parent',fig, ...
+    'Units','normalized', ...
+    'Position',[panelLeft panelBottom panelWidth panelHeight], ...
+    'Title','Movies');
+
+scrollbar = uicontrol('Style','slider', ...
+    'Units','normalized', ...
+    'Position',[panelLeft+panelWidth panelBottom 0.015 panelHeight], ...
+    'Min',0,'Max',max(0,contentHeight-panelHeight),'Value',0, ...
+    'Callback',@(~,~)scrollCheckboxes());
+
+checkboxes = gobjects(nFiles,1);
+for i = 1:nFiles
+    y = contentHeight - i*(checkboxHeight+checkboxSpacing);
+    checkboxes(i) = uicontrol('Parent',panel, ...
+        'Style','checkbox', ...
+        'String',filenames{i}, ...
+        'Units','normalized', ...
+        'Position',[0.05 y/panelHeight 0.9 checkboxHeight/panelHeight], ...
+        'Value',1, ...
+        'Callback',@(~,~)updateScatter());
 end
 
+%% ===== Auto-sweep + record button =====
+btnAutoSweep = uicontrol('Style','pushbutton', ...
+    'String','Auto-sweep & Record', ...
+    'Units','normalized', ...
+    'Position',[0.85 0.02 0.12 0.05], ...
+    'Callback',@(src,event)autoSweepAndRecord());
+
+%% ===== Collect UI controls for hiding =====
+uiControls = [sliderMin, sliderMax, labelMin, labelMax, checkboxes', scrollbar, btnAutoSweep];
 % Data cursor
 dcm = datacursormode(fig);
 set(dcm, 'Enable', 'on', 'UpdateFcn', @myupdatefcn);
 
-% Fonction de mise à jour
+%% ===== Callbacks =====
+    function scrollCheckboxes()
+        offset = scrollbar.Value;
+        for i = 1:nFiles
+            pos = checkboxes(i).Position;
+            pos(2) = (contentHeight - i*(checkboxHeight+checkboxSpacing) - offset)/panelHeight;
+            checkboxes(i).Position = pos;
+        end
+    end
+
     function updateScatter()
         tMinVal = sliderMin.Value;
         tMaxVal = sliderMax.Value;
@@ -125,7 +163,6 @@ set(dcm, 'Enable', 'on', 'UpdateFcn', @myupdatefcn);
         landmarks_scatter.YData = landmarks_transformed(idxLandmarks,2);
     end
 
-% Fonction datatip
     function txt = myupdatefcn(~, event_obj)
         target = get(event_obj, 'Target');
         pos = event_obj.Position;
@@ -143,9 +180,49 @@ set(dcm, 'Enable', 'on', 'UpdateFcn', @myupdatefcn);
             ['Fichier: ', UD(ind).filename]};
     end
 
-% Fix to initial
+function autoSweepAndRecord()
+        % --- hide all UI and panel title ---
+        set(uiControls,'Visible','off');
+        panel.Visible = 'off';  % hide the panel completely
+
+        % --- setup video ---
+        v = VideoWriter('alignment_map_autosweep.mp4','MPEG-4');
+        v.FrameRate = 10;
+        open(v);
+
+        sliderMin.Enable = 'off';
+        sliderMax.Enable = 'off';
+
+        tMinVal = sliderMin.Value;
+        nSteps = 120;
+        tVals = linspace(tMinVal,tMax,nSteps);
+
+        % --- create text label for max time ---
+    hTimeLabel = text(ax, 0.05, 0.95, '', 'Units','normalized', ...
+                      'FontSize',14, 'FontWeight','bold', 'Color','k');
+
+        for k = 1:nSteps
+            sliderMax.Value = tVals(k);
+            updateScatter();
+            hTimeLabel.String = sprintf('Max time: %.2f h', tVals(k));
+            drawnow;
+            writeVideo(v,getframe(fig));
+        end
+
+        close(v);
+
+        % --- restore UI ---
+        set(uiControls,'Visible','on');
+        panel.Visible = 'on';
+        sliderMin.Enable = 'on';
+        sliderMax.Enable = 'on';
+        delete(hTimeLabel); % remove label after recording
+
+        disp('Saved video: alignment_map_autosweep.mp4');
+    end
+
+%% Init
+scrollCheckboxes();
 updateScatter();
-% assignin('base', 'Tr', Tr);
-% assignin('base', 'procruste_transformed', procruste_transformed);
-% assignin('base', 'filenames', filenames);
+
 end
