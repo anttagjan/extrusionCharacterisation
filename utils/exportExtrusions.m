@@ -1,3 +1,7 @@
+[coordinates]=loadCellsDivisions();
+coordinates2=coordinates;
+coordinates = coordinates(coordinates(:,3)==11,:);
+filepath=('D:\Antonio\extrusion systematic characterisation');
 [rawImage]=readStackTif(fullfile(filepath,'projections','2025-06-25 s6.tiff'));
 height = size(rawImage,1);
 width=size(rawImage,2);
@@ -32,4 +36,4 @@ for t = 1:size(rawImage,3)
     extrusionStack(:,:,t) = frameMat;
 end
 
-writeStackTif(uint16(extrusionStack),'stk.tiff');
+writeStackTif(uint16(extrusionStack),'stk2.tiff');

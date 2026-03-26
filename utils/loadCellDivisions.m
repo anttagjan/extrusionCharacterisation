@@ -1,9 +1,9 @@
 close all
 clear all
 %% load data
-% filepath=('D:\Antonio\deXtrusion\tests');
-filepath=('D:\Antonio\extrusion systematic characterisation\input_cellDivision');
-nf_division = dir(fullfile(filepath,'*cell_division.zip'));
+filepath=('D:\Antonio\deXtrusion\caspase dynamics dataset');
+% filepath=('D:\Antonio\extrusion systematic characterisation\input_cellDivision');
+nf_division = dir(fullfile(filepath,'results','*cell_division.zip'));
 % nf_division = dir(fullfile(filepath,'results_cellDivision','*cell_division.zip'));
 filenames = {nf_division.name};
 noDivisions={};
@@ -11,7 +11,7 @@ noDivisions={};
 % Extraction division coordinates
 k = 0; coordinates = [];
 for i = 1:length(nf_division)
-    fname = fullfile(filepath,nf_division(i).name);
+    fname = fullfile(filepath,'results',nf_division(i).name);
    % fname = fullfile(filepath,'results_cellDivision',nf_division(i).name);
     ROI = ReadImageJROI(fname);
     L(i) = length(ROI);
