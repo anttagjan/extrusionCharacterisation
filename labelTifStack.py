@@ -15,7 +15,7 @@ from tqdm import tqdm
 import os
 
 filepath = 'D:/Antonio/epyseg/ecadGFP'
-
+#filepath = 'D:\Antonio\caspase dynamics\datasets\kd 5 inx2 v2_normalised\input'
 # Folder for outputs
 os.makedirs(f"{filepath}/labeled", exist_ok=True)
 os.makedirs(f"{filepath}/tracked", exist_ok=True)
@@ -23,7 +23,7 @@ os.makedirs(f"{filepath}/dataframes", exist_ok=True)
 #%% PARAMETERS
 
 list_param = ('centroid', 'label', 'area','perimeter')
-# area_threshold = 2000   # Maximum area to keep
+area_threshold = 2000   # Maximum area to keep
 pixel_range = 18        # TrackPy search range
 min_track_length = 5    # Optional: remove very short tracks
 
