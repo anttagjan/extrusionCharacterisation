@@ -1,8 +1,9 @@
 [coordinates]=loadCellsDivisions();
 coordinates2=coordinates;
-coordinates = coordinates(coordinates(:,3)==11,:);
-filepath=('D:\Antonio\extrusion systematic characterisation');
-[rawImage]=readStackTif(fullfile(filepath,'projections','2025-06-25 s6.tiff'));
+coordinates = coordinates(coordinates(:,3)==5,:);
+% filepath=('D:\Antonio\extrusion systematic characterisation');
+% [rawImage]=readStackTif(fullfile(filepath,'projections','2025-06-25 s6.tiff'));
+[rawImage]=readStackTif(fullfile(filepath,'wt 1.tif'));
 height = size(rawImage,1);
 width=size(rawImage,2);
 extrusionStack = zeros(size(rawImage));
@@ -36,4 +37,48 @@ for t = 1:size(rawImage,3)
     extrusionStack(:,:,t) = frameMat;
 end
 
-writeStackTif(uint16(extrusionStack),'stk2.tiff');
+writeStackTif(uint16(extrusionStack),'stk3.tiff');
+
+dataFrame = readtable(strcat(filepath,'/dataframes/DataFrame_interpolated_and_smoothed_relevant_cells.xlsx'));
+if min(dataFrame.frame) < 1
+    dataFrame.frame=dataFrame.frame+1;
+end
+
+caspaseStack = zeros(size(rawImage));
+for nCell = 1:size(validOnLabels)
+     t = validOnLabels.t0(nCell); 
+
+    % Extract coordinates for this cell at that frame
+    coords = dataFrame( ...
+        dataFrame.frame == t & ...
+        dataFrame.particle == validOnLabels.label(nCell), ...
+        {'x','y'} ...
+    );
+
+    if isempty(coords)
+        continue
+    end
+
+    coordinatesCaspase = [coords.x coords.y];
+    % Create empty frame
+    frameMat = zeros(height, width);
+
+    % Round coordinates
+    inds = round(coordinatesCaspase);
+
+    % Clamp to image bounds
+    inds(:,1) = max(1, min(width, inds(:,1)));
+    inds(:,2) = max(1, min(height, inds(:,2)));
+
+    % Convert to linear indices (vectorized, faster)
+    linearInd = sub2ind([height, width], inds(:,2), inds(:,1));
+
+    % Set points (binary is enough before dilation)
+    frameMat(linearInd) = 1;
+
+    % Dilate
+    frameMat = imdilate(frameMat, se);
+
+    % Accumulate into stack (important if multiple cells per frame)
+    caspaseStack(:,:,t) = caspaseStack(:,:,t) | frameMat;
+end
