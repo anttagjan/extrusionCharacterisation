@@ -1,4 +1,4 @@
-function [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,filename,peaks,procruste_transformed,masks_transformed)
+function [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,filename,peaks,procruste_transformed,masks_transformed,features_transformed)
 %getExtrusionHeatmap Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -35,6 +35,11 @@ if ~exist(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAl
     allMaxCount = cell(max(movies), length(timeBins)-1);
     allValidMaxCount = cell(max(movies), length(timeBins)-1);
 
+    allN_cell = cell(max(movies), length(timeBins)-1);
+    allValidN_cell = cell(max(movies), length(timeBins)-1);
+    allMaxCellCount = cell(max(movies), length(timeBins)-1);
+    allValidMaxCellCount = cell(max(movies), length(timeBins)-1);
+
     for nMovie = 1:max(movies)
         current_masks= masks_transformed{nMovie};
         for nTime = 1:(length(timeBins)-1)
@@ -60,16 +65,30 @@ if ~exist(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAl
             % end
 
             if nTime < length(timeBins)-1
+                % death events
                 idx = procruste_transformed(:,3)==nMovie & ...
                     procruste_transformed(:,4) >= timeLimits(1) & ...
                     procruste_transformed(:,4) < timeLimits(2);
                 timeIndx = allMoviesTime{nMovie} >= timeLimits(1) & allMoviesTime{nMovie} < timeLimits(2);
+                % morphological features
+                idx_features = features_transformed(:,8)==nMovie & ...
+                    features_transformed(:,6) >= timeLimits(1) & ...
+                    features_transformed(:,6) < timeLimits(2);
+                timeIndx = allMoviesTime{nMovie} >= timeLimits(1) & allMoviesTime{nMovie} < timeLimits(2);
+
             else
                 % Last bin : also include the upper bound
+                % death events
                 idx = procruste_transformed(:,3)==nMovie & ...
                     procruste_transformed(:,4) >= timeLimits(1) & ...
                     procruste_transformed(:,4) <= timeLimits(2);
                 timeIndx = allMoviesTime{nMovie} >= timeLimits(1) & allMoviesTime{nMovie} <= timeLimits(2);
+                % morphological features
+                idx_features = features_transformed(:,8)==nMovie & ...
+                    features_transformed(:,6) >= timeLimits(1) & ...
+                    features_transformed(:,6) <= timeLimits(2);
+                timeIndx = allMoviesTime{nMovie} >= timeLimits(1) & allMoviesTime{nMovie} <= timeLimits(2);
+
             end
 
             if ~isempty(current_masks(:,:,timeIndx))
@@ -111,10 +130,38 @@ if ~exist(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAl
                 validMaxCount = prctile(validN_full(~isnan(validN_full)), 100);
             end
 
+            %% Features assignment of bins
+            % Manual assignment of bins
+            xFeatures = features_transformed(idx_features,1);
+            yFeatures = features_transformed(idx_features,2);
+
+            xiFeatures = discretize(xFeatures, xEdges);
+            yiFeatures = discretize(yFeatures, yEdges);
+
+            % Remove points outside (NaN if out of bounds anyway)
+            valid = ~isnan(xiFeatures) & ~isnan(yiFeatures);
+            xiFeatures = xiFeatures(valid);
+            yiFeatures = yiFeatures(valid);
+
+            N_cell = accumarray([yiFeatures, xiFeatures], 1, [nBins, nBins]);
+            maxCellCount = prctile(N_cell(:), 100);
+            validN_cell = N_cell;
+            validN_cell(~validBinMask) = NaN;
+            if all(isnan(N_cell), 'all')
+                validMaxCellCount = 0;
+            else
+                validMaxCellCount = prctile(validN_cell(~isnan(validN_cell)), 100);
+            end
+
             allN_full{nMovie,nTime} = N_full;
             allValidN_full{nMovie,nTime} = validN_full;
             allMaxCount{nMovie,nTime} = maxCount;
             allValidMaxCount{nMovie,nTime} = validMaxCount;
+
+            allN_cell{nMovie,nTime} = N_cell;
+            allValidN_cell{nMovie,nTime} = validN_cell;
+            allMaxCellCount{nMovie,nTime} = maxCellCount;
+            allValidMaxCellCount{nMovie,nTime} = validMaxCellCount;
         end
     end
 
@@ -126,7 +173,16 @@ if ~exist(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAl
             heatmapSum = heatmapSum + current;
         end
     end
-    save(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAlignment',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')),"heatmapSum","nBins","timeStep","allN_full","allValidN_full");
+
+    heatmapCellSum = zeros(nBins, nBins);
+    for i = 1:size(allValidN_cell,1)
+        for j = 1:size(allValidN_cell,2)
+            current = allValidN_cell{i,j};
+            current(isnan(current)) = 0;  % exclude NaNs
+            heatmapCellSum = heatmapCellSum + current;
+        end
+    end
+    save(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAlignment',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')),"heatmapSum","heatmapCellSum","nBins","timeStep","allN_full","allValidN_full","allN_cell","allValidN_cell");
 
 else
     load(fullfile(filepath,'dataframes',strcat('heatmap_data_',filename,'timeAlignment',num2str(nBins),'x',num2str(nBins),'_',num2str(timeStep),'hStep.mat')));
@@ -134,7 +190,7 @@ end
 
 %% Display
 figure;
-imagesc(heatmapSum);
+imagesc(heatmapCellSum);
 axis image;
 title('Total Extrusion Heatmap');
 xlabel('X bins');

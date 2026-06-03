@@ -1,11 +1,13 @@
 close all
 %% load data
-filepath=('D:\Antonio\extrusion systematic characterisation\');
+filepath=('D:\Antonio\extrusion systematic characterisation\test');
 timeDataframe = readtable(fullfile(filepath,'dataframes','timeAlignment.xlsx'));
 
 %% Initialization
 nf_extrusion = dir(fullfile(filepath,'input','*cell_death.zip'));
 nf_masks = dir(fullfile(filepath,'masks','*.tif'));
+nf_features = dir(fullfile(filepath,'features','*.csv'));
+frameRate=5;
 
 filenames = {nf_extrusion.name};
 
@@ -73,7 +75,15 @@ if ~exist(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_tran
         masks{i} = readStackTif(fname);
     end
 
+    % Extraction features coordinates
+   dataframeFeatures = cell(1, length(nf_features));
+    for i = 1:length(nf_features)
+        fname = fullfile(filepath,'features',nf_features(i).name);
+        dataframeFeatures{i} = readtable(fname);
+    end
+
     %% Procrustes transformation
+    features_transformed=[];
     procruste_transformed = [];
     landmarks_transformed = [];
     masks_transformed = cell(1, length(nf_masks));
@@ -94,8 +104,18 @@ if ~exist(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_tran
         landmarks_transformed = [landmarks_transformed; LM_tr, ones(size(LM_tr,1),1)*i];
 
         % === Transform masks ===
-        idx_masks = logical(masks{i});  % Ensure binary
+        idx_masks = logical(~masks{i});  % Ensure binary
         [H, W, T] = size(idx_masks);
+
+        % === Transform features ===
+        csv_features= (dataframeFeatures{i});
+        xyCells = [csv_features.y csv_features.x];
+        features_tr = Tr(i).b * xyCells * Tr(i).T + Tr(i).c(1,:);
+        csv_features.y=features_tr(:,1);
+        csv_features.x=features_tr(:,2);
+        csv_features.file=[];
+        csv_features.frame = (csv_features.frame-timeTable.peaks(i))*frameRate/60;
+        features_transformed = [features_transformed;table2array(csv_features), ones(size(csv_features,1),1)*i];
 
         % Build affine2d object from Procrustes
         A = Tr(i).b * Tr(i).T;
@@ -126,22 +146,22 @@ if ~exist(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_tran
     idx = 1;
     for i = 1:length(coordinates)
         nMovie = coordinates(i,3);
-        timepoint = (coordinates(i,4)-timeTable.peaks(nMovie))*5/60;
+        timepoint = (coordinates(i,4)-timeTable.peaks(nMovie))*frameRate/60;
         timeCoordinates_transformed(idx) = timepoint;
         idx = idx + 1;
     end
     procruste_transformed = [procruste_transformed, timeCoordinates_transformed];
 
-    save(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_transformed.mat')),'procruste_transformed','landmarks_transformed','masks_transformed','-v7.3');
+    save(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_transformed.mat')),'procruste_transformed','landmarks_transformed','masks_transformed','features_transformed','-v7.3');
     
     % if ~exist(fullfile(filepath,'dataframes','data_transformed.mat'),'file') 
     %     save(strcat(filepath,'dataframes','masks_transformed.mat'),'masks_transformed', '-v7.3');
     % end
-    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,selectedLandmarks,timeTable,procruste_transformed,masks_transformed);
+    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,selectedLandmarks,timeTable,procruste_transformed,masks_transformed,features_transformed);
     alignment_map(filenames,procruste_transformed,landmarks_transformed)
 else
     load(fullfile(filepath,'dataframes',strcat('data_',selectedLandmarks,'_transformed.mat')));
-    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,selectedLandmarks,timeTable,procruste_transformed,masks_transformed);
+    [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,selectedLandmarks,timeTable,procruste_transformed,masks_transformed,features_transformed);
 end
 
 %getSumAverageCVHeatmap(procruste_transformed,allValidN_full,nBins,timeStep);
