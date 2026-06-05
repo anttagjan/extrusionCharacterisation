@@ -1,4 +1,4 @@
-function [allN_full,allValidN_full,heatmapSum,nBins,timeStep]=getExtrusionHeatmap2DTime(filepath,filename,peaks,procruste_transformed,masks_transformed,features_transformed)
+function getExtrusionHeatmap2DTime(filepath,filename,peaks,procruste_transformed,masks_transformed,features_transformed)
 %getExtrusionHeatmap Summary of this function goes here
 %   Detailed explanation goes here
 

@@ -22,7 +22,16 @@ os.makedirs(f"{filepath}/tracked", exist_ok=True)
 os.makedirs(f"{filepath}/dataframes", exist_ok=True)
 #%% PARAMETERS
 
-list_param = ('centroid', 'label', 'area','perimeter')
+list_param = (
+    'centroid',
+    'label',
+    'area',
+    'perimeter',
+    'eccentricity',
+    'orientation',
+    'major_axis_length',
+    'minor_axis_length'
+)
 area_threshold = 2000   # Maximum area to keep
 pixel_range = 18        # TrackPy search range
 min_track_length = 5    # Optional: remove very short tracks
@@ -62,6 +71,19 @@ for file in sorted_files:
         df_int['frame'] = t
         df_int['file'] = os.path.basename(file)
         
+        # --- derived morphology metrics ---
+        df_int['aspect_ratio'] = (
+            df_int['major_axis_length'] / df_int['minor_axis_length']
+            )
+
+        df_int['aspect_ratio'] = np.where(
+            df_int['minor_axis_length'] > 0,
+            df_int['major_axis_length'] / df_int['minor_axis_length'],
+            np.nan
+        )
+        
+        df_int['orientation'] = np.degrees(df_int['orientation'])
+        
         df = pd.concat([df, df_int], ignore_index=True)
     
     # Convert labeled stack to 3D array
@@ -72,7 +94,7 @@ for file in sorted_files:
     ski_io.imsave(f"{filepath}/labeled/{out_name}", labeled_stack.astype(np.uint16))
     
     # --- FILTER BIG CELLS ---
-    # df = df[df['area'] < area_threshold].copy()
+    df = df[df['area'] < area_threshold].copy()
     
     # Rename centroid columns for TrackPy
     df = df.rename(columns={"centroid-0": "y", "centroid-1": "x"})
