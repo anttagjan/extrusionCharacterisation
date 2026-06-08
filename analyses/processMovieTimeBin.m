@@ -1,14 +1,14 @@
 function result = processMovieTimeBin( ...
     movieID, timeIndex, timeBins, ...
-    procruste_transformed, masks_transformed, ...
-    features_transformed, peaks, grid)
+    extrusions_transformed, masks_transformed, ...
+    features_transformed, grid)
 
 timeLimits = [timeBins(timeIndex), timeBins(timeIndex+1)];
 
 % --- FILTER DATA ---
-idx = procruste_transformed(:,3)==movieID & ...
-      procruste_transformed(:,4)>=timeLimits(1) & ...
-      procruste_transformed(:,4)<timeLimits(2);
+idx = extrusions_transformed(:,3)==movieID & ...
+      extrusions_transformed(:,4)>=timeLimits(1) & ...
+      extrusions_transformed(:,4)<timeLimits(2);
 
 idxF = features_transformed(:,8)==movieID & ...
        features_transformed(:,6)>=timeLimits(1) & ...
@@ -18,7 +18,7 @@ idxF = features_transformed(:,8)==movieID & ...
 mask = masks_transformed{movieID};
 
 if ~isempty(mask)
-    validMask = any(mask(:,:,1:end),3);
+    validMask = ~any(mask(:,:,1:end),3); % masks: 1 invalidRegion 0 validRegion
 else
     validMask = [];
 end
@@ -33,8 +33,8 @@ aC = features_transformed(idxF,4);
 cells = getCellMetrics(xC,yC,aC,tissue,grid);
 
 % --- EXTRUSIONS ---
-xE = procruste_transformed(idx,1);
-yE = procruste_transformed(idx,2);
+xE = extrusions_transformed(idx,1);
+yE = extrusions_transformed(idx,2);
 
 extrusions = getExtrusionMetrics(xE,yE,tissue,grid);
 
