@@ -1,7 +1,7 @@
-function grid = buildSpatialGrid(procruste_transformed, nBins)
+function grid = buildSpatialGrid(extrusions_transformed, nBins)
 
-X = procruste_transformed(:,1);
-Y = procruste_transformed(:,2);
+X = extrusions_transformed(:,1);
+Y = extrusions_transformed(:,2);
 
 marginX = 0.01 * (max(X)-min(X));
 marginY = 0.01 * (max(Y)-min(Y));
