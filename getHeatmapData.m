@@ -1,35 +1,59 @@
-function getHeatmapData(filepath, filename, peaks, data)
+function getHeatmapData(filepath, filenames, alignMethod, data)
 
 params.nBins = 30;
 params.timeStep = 1;
 extrusions_transformed= data.extrusions_transformed;
+landmarks_transformed=data.landmarks_transformed;
 masks_transformed=data.masks_transformed;
 features_transformed=data.features_transformed;
 
+%% Preparing heatmap grid
 grid = buildSpatialGrid(extrusions_transformed, params.nBins);
 
-allData = processAllMovies( ...
+%% Processing (Spatio Temporal discretisation)
+
+[allData,timeBins] = processAllMovies( ...
     extrusions_transformed, ...
     masks_transformed, ...
     features_transformed, ...
     grid, ...
     params);
 
+%% Summary
+
 summary = aggregateHeatmaps(allData);
 
 save(fullfile(filepath,'dataframes', ...
-    strcat('heatmap_',filename,'_',num2str(timeStep),'h_timeStep.mat')), ...
+    strcat('STdata_',alignMethod,'_',num2str(params.timeStep),'h_timeStep.mat')), ...
     'summary','allData','grid','params');
 
-nMovies = size(allData,1);
+%% Valid Bin Mask
 
-validBinsMovie = [];
+nMovies = size(allData,1);
+nTimeBins = size(allData,2);
+
+validBinsMovie = false(params.nBins, params.nBins, nTimeBins, nMovies);
 
 for m = 1:nMovies
-    validBinsMovie(:,:,m) = allData{m}.tissue.validBinMask;
+    for t = 1:nTimeBins
+
+        d = allData{m,t};
+
+        if isstruct(d) && isfield(d,'tissue') && ...
+                isfield(d.tissue,'validBinMask') && ...
+                ~isempty(d.tissue.validBinMask)
+
+            validBinsMovie(:,:,t,m) = d.tissue.validBinMask;
+        end
+
+    end
 end
 
-plotExtrusions(filenames,extrusions_transformed,landmarks_transformed,validBinsMovie);
+
+%% PLOTS
+
+plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,timeBins)
+plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
 plotHeatmaps(summary);
 
 end

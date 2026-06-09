@@ -1,58 +1,84 @@
 function summary = aggregateHeatmaps(allData)
 
-[nM,nT] = size(allData);
+[nM, nT] = size(allData);
 
 initialized = false;
+
+sumCells = [];
+sumArea = [];
+sumExtr = [];
+sumTissue = [];
+weight = [];
+
+%% =========================================================
+% ACCUMULATION LOOP
+%% =========================================================
 
 for i = 1:nM
     for j = 1:nT
 
-        if isempty(allData{i,j})
+        d = allData{i,j};
+        if isempty(d)
             continue
         end
 
+        % --- initialize once ---
         if ~initialized
-            nBins = size(allData{i,j}.cells.count,1);
+            nBins = size(d.cells.count);
 
-            sumCells = zeros(nBins);
-            sumArea  = zeros(nBins);
-            sumExtr  = zeros(nBins);
+            sumCells  = zeros(nBins);
+            sumArea   = zeros(nBins);
+            sumExtr   = zeros(nBins);
             sumTissue = zeros(nBins);
+            weight    = zeros(nBins);
 
             initialized = true;
         end
 
-        c = allData{i,j}.cells.count;       c(isnan(c)) = 0;
-        a = allData{i,j}.cells.areaSum;     a(isnan(a)) = 0;
+        % --- extract maps ---
+        c = d.cells.count;      c(isnan(c)) = 0;
+        a = d.cells.areaSum;    a(isnan(a)) = 0;
+        e = d.extrusions.count; e(isnan(e)) = 0;
+        t = d.tissue.area;      t(isnan(t)) = 0;
 
-        e = allData{i,j}.extrusions.count;  e(isnan(e)) = 0;
+        valid = ~isnan(d.tissue.area);
 
-        t = allData{i,j}.tissue.area;       t(isnan(t)) = 0;
+        % --- accumulate ---
+        sumCells(valid)  = sumCells(valid)  + c(valid);
+        sumArea(valid)   = sumArea(valid)   + a(valid);
+        sumExtr(valid)   = sumExtr(valid)   + e(valid);
+        sumTissue(valid) = sumTissue(valid) + t(valid);
 
-        sumCells   = sumCells + c;
-        sumArea    = sumArea + a;
-        sumExtr    = sumExtr + e;
-        sumTissue  = sumTissue + t;
-
+        weight(valid) = weight(valid) + 1;
     end
 end
 
-% -------- FINAL METRICS --------
-summary.totalCells = sumCells;
-summary.totalCellArea = sumArea;
+%% =========================================================
+% OUTPUT RAW CUMULATIVE MAPS
+%% =========================================================
 
-summary.totalExtrusions = sumExtr;
-summary.totalTissueArea = sumTissue;
+summary.totalCells       = sumCells;
+summary.totalCellArea    = sumArea;
+summary.totalExtrusions  = sumExtr;
+summary.totalTissueArea  = sumTissue;
 
-% densities
+%% =========================================================
+% NORMALIZED METRICS (OPTIONAL BUT IMPORTANT)
+%% =========================================================
+
 summary.cellDensity = sumCells ./ sumTissue;
 summary.extrusionDensity = sumExtr ./ sumTissue;
 
-summary.cellDensity(sumTissue==0) = NaN;
-summary.extrusionDensity(sumTissue==0) = NaN;
+summary.cellDensity(sumTissue == 0) = NaN;
+summary.extrusionDensity(sumTissue == 0) = NaN;
 
-% mean cell size
 summary.meanCellArea = sumArea ./ sumCells;
-summary.meanCellArea(sumCells==0) = NaN;
+summary.meanCellArea(sumCells == 0) = NaN;
+
+%% =========================================================
+% SUPPORT MAP (QUALITY CONTROL)
+%% =========================================================
+
+summary.observationCount = weight;
 
 end

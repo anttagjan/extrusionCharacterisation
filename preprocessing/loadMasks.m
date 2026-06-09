@@ -1,4 +1,4 @@
-function masks = extractMasks(filepath, nf_masks)
+function masks = loadMasks(filepath, nf_masks)
 
 masks = cell(1, length(nf_masks));
 
