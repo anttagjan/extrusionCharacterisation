@@ -18,9 +18,21 @@ masks_transformed = cell(1,nMovies);
 masks_relativeTime = [];
 piv_relativeTime = [];
 
+%% Global reference
+% averaging landmark positions and picking as a reference the most central movie in dataset
+meanShape = buildMeanMovieShape(landmarks);
+
+refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie
+movieIDs = unique(landmarks(:,3));
+
+Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
+
+save(fullfile(filepath,'meanShape_procrustes.mat'), ...
+    'meanShape','refMovieID', 'Rglobal');
+
 for i = 1:nMovies
 
-    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate);
+    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovieID, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal);
 
     extrusions_transformed = [extrusions_transformed; Ext, i*ones(size(Ext,1),1)];
     divisions_transformed = [divisions_transformed; Dv, i*ones(size(Dv,1),1)];
@@ -40,5 +52,9 @@ data.masks_transformed = masks_transformed;
 data.masks_relativeTime = masks_relativeTime;
 data.piv_transformed = piv_transformed;
 data.piv_relativeTime = piv_relativeTime;
+
+data.refMovieID = refMovieID;
+data.meanShape = meanShape;
+data.Rglobal = Rglobal;
 
 end

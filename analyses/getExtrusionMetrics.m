@@ -10,7 +10,11 @@ iy = iy(valid);
 
 nBins = grid.nBins;
 
-extrusions.count = accumarray([iy ix], 1, [nBins nBins], @sum, 0);
+if isempty(ix)
+    extrusions.count = zeros(nBins, nBins);
+else
+    extrusions.count = accumarray([iy ix], 1, [nBins nBins], @sum, 0);
+end
 
 extrusions.density = extrusions.count ./ tissue.area;
 extrusions.density(tissue.area==0) = NaN;

@@ -1,68 +1,66 @@
 function [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr, timeMask,timePIV] = transformMovie( ...
-    i, landmarks, coordinates,division, masks,piv, dataframeFeatures, timeTable, frameRate)
+    i,  refMovieID,landmarks, coordinates,division, masks,piv, dataframeFeatures, timeTable, frameRate, Rglobal)
 
 %% --- Procrustes alignment ---
-ref = landmarks(landmarks(:,3) == 1, 1:2);
-mov = landmarks(landmarks(:,3) == i, 1:2);
+ref = landmarks(landmarks(:,3)==refMovieID,1:2);
+mov = landmarks(landmarks(:,3)==i,1:2);
 
-[~, ~, transform] = procrustes(ref, mov);
-Tr = transform;
+[~,~,Tr] = procrustes(ref,mov, ...
+    'Scaling',true, ...
+    'Reflection',false);
 
 A = Tr.b * Tr.T;
 t = Tr.c(1,:);
 
-%% --- Temporal alignment ---
+Afull = [A, [0;0]; t, 1];
+tform = affine2d(Afull);
+
 timeFactor = frameRate / 60;
 
 %% --- Transform extrusions ---
 coord_i = coordinates(coordinates(:,3) == i,:);
-Y = coord_i(:, 1:2);
-Ext = Y * A + t;
-alignedTime = (coord_i(:,4) - timeTable.peaks(i)) * timeFactor;
-Ext = [Ext alignedTime];
+Ext = coord_i(:, 1:2) * A + t;
+Ext = [Ext, (coord_i(:,4) - timeTable.peaks(i)) * timeFactor];
 
 %% --- Transform divisions ---
 division_i = division(division(:,3) == i, :);
-D = division_i(:, 1:2);
-Dv = D * A + t; 
-alignedTime = (division_i(:,4) - timeTable.peaks(i)) * timeFactor;
-Dv = [Dv alignedTime];
+Dv = division_i(:, 1:2) * A + t; 
+Dv = [Dv (division_i(:,4) - timeTable.peaks(i)) * timeFactor];
 
 %% --- Transform landmarks ---
-LM = mov;
-LM_tr = LM * A + t;
+LM_tr = mov * A + t;
 
 %% --- Transform features ---
-csv_features = dataframeFeatures{i};
-xy = [csv_features.y, csv_features.x];
+csv = dataframeFeatures{i};
+xy = [csv.y, csv.x];
 
-xy_tr = xy * A + t;
+feat_tr = xy * A + t;
 
-csv_features.y = xy_tr(:,1);
-csv_features.x = xy_tr(:,2);
+csv.y = feat_tr(:,1);
+csv.x = feat_tr(:,2);
 
-csv_features.file = [];
+csv.file = [];
 
-csv_features.frame = (csv_features.frame - timeTable.peaks(i)) * frameRate / 60;
+csv.frame = (csv.frame - timeTable.peaks(i)) * frameRate / 60;
 
-feat_tr = table2array(csv_features);
+feat_tr = table2array(csv);
 
 %% --- Transform masks ---
 maskStack = masks{i};   % H x W x T logical
 [H, W, T] = size(maskStack);
 
-Afull = [A, [0;0]; t, 1];
-tform = affine2d(Afull);
-
-% IMPORTANT: input spatial reference (pixel grid original)
 Rin = imref2d([H W]);
+Hg = Rglobal.ImageSize(1);
+Wg = Rglobal.ImageSize(2);
 
-mask_tr = false(H, W, T);
+mask_tr = false(Hg, Wg, T);
+
+%mask_tr = false([size(Rglobal.ImageSize,1:2) T]);
 
 for k = 1:T
-    mask_tr(:,:,k) = imwarp(maskStack(:,:,k), Rin, tform, ...
-        'OutputView', Rin, ...
-        'InterpolationMethod', 'nearest');
+    mask_tr(:,:,k) = logical(imwarp(maskStack(:,:,k), Rin, tform, ...
+        'OutputView', Rglobal, ...
+        'InterpolationMethod','nearest'));
 end
 
 % time vector stays separate 
@@ -72,37 +70,31 @@ timeMask = ((1:T) - timeTable.peaks(i)) * timeFactor;
 pivData = piv{i};   % cell array: 1 x T, each 74x74 single
 Tp = size(pivData.v_original,1);
 
-[Hp, Wp] = size(pivData.v_original{1});
+% [Hp, Wp] = size(pivData.v_original{1});
 
-%% --- affine transform (same as everything else) ---
-Afull = [A, [0;0]; t, 1];
-tform = affine2d(Afull);
+% Rin = imref2d([H W]);  % original image space
 
-%% --- build PIV grid in ORIGINAL image space ---
-% (same reference as masks BEFORE transform)
-[xPIV, yPIV] = meshgrid( ...
-    linspace(1, W, Wp), ...
-    linspace(1, H, Hp));
+piv_tr = cell(1,Tp);
 
-pts = [xPIV(:), yPIV(:)];
-ptsT = pts * A + t;
-
-Xp = reshape(ptsT(:,1), size(xPIV));
-Yp = reshape(ptsT(:,2), size(yPIV));
-
-%% --- transform scalar fields in time ---
-piv_tr = cell(1, Tp);
-
-for k = 1:Tp
-
-    Z = pivData.v_original{k};   % 74x74 scalar field
-
-    % no value transform, only spatial alignment
-    piv_tr{k}.Z = Z;
-    piv_tr{k}.Xp = Xp;
-    piv_tr{k}.Yp = Yp;
-
-end
+% for k = 1:Tp
+% 
+%     Z = pivData.v_original{k};
+% 
+%     % ---------------------------------------------------------
+%     % STEP 1: warp scalar field into GLOBAL canvas
+%     % ---------------------------------------------------------
+%     Zwarp = imwarp(Z, Rin, tform, ...
+%         'OutputView', Rglobal, ...
+%         'InterpolationMethod', 'bilinear');
+% 
+%     piv_tr{k}.Z = Zwarp;
+% 
+%     % ---------------------------------------------------------
+%     % STEP 2: ALSO store coordinates if needed (optional)
+%     % ---------------------------------------------------------
+%     piv_tr{k}.Ref = Rglobal;
+% 
+% end
 
 timePIV = timeMask+timeFactor; % PIV is always measured refered to the t-1 
 end

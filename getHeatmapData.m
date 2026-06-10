@@ -8,7 +8,13 @@ masks_transformed=data.masks_transformed;
 features_transformed=data.features_transformed;
 
 %% Preparing heatmap grid
-grid = buildSpatialGrid(extrusions_transformed, params.nBins);
+allX = extrusions_transformed(:,1);
+allY = extrusions_transformed(:,2);
+
+grid.nBins = params.nBins;
+
+grid.xEdges = linspace(min(allX), max(allX), params.nBins+1);
+grid.yEdges = linspace(min(allY), max(allY), params.nBins+1);
 
 %% Processing (Spatio Temporal discretisation)
 

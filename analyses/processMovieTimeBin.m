@@ -22,7 +22,7 @@ if isempty(mask)
     validMask = [];
 else
     % mask is assumed: H x W x T logical
-    invalidRegion = mask(:,:,timeIndex) > 0;
+    invalidRegion = mask(:,:,timeIndex) == 0;
     validMask = ~invalidRegion;
 end
 
