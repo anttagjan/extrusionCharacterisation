@@ -1,12 +1,12 @@
 function exportTrackedCells()
 
-filepath=('D:\Antonio\epyseg\ecadGFP');
+filepath=('D:\Antonio\epyseg\ecadGFP/raw');
 % filepath=('D:\Antonio\caspase dynamics\datasets\kd 5 inx2 v2_normalised\input');
 fileData = dir(fullfile(filepath,'labeled','*.tif'));
 
 area_threshold = 2000;
 
-for nFile = 1:size(fileData,1)
+for nFile = 39:size(fileData,1)
     
     disp(fileData(nFile).name);
     

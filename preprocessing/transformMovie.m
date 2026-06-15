@@ -32,18 +32,17 @@ LM_tr = mov * A + t;
 
 %% --- Transform features ---
 csv = dataframeFeatures{i};
-xy = [csv.y, csv.x];
 
-feat_tr = xy * A + t;
+csv.x = csv.x* A + t;
+csv.y = csv.y* A + t;
 
-csv.y = feat_tr(:,1);
-csv.x = feat_tr(:,2);
-
-csv.file = [];
+if ismember('file', csv.Properties.VariableNames)
+    csv = removevars(csv, 'file');
+end
 
 csv.frame = (csv.frame - timeTable.peaks(i)) * frameRate / 60;
 
-feat_tr = table2array(csv);
+feat_tr = csv;
 
 %% --- Transform masks ---
 maskStack = masks{i};   % H x W x T logical

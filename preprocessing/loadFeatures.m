@@ -4,7 +4,8 @@ dataframeFeatures = cell(1, length(nf_features));
 
 for i = 1:length(nf_features)
     fname = fullfile(filepath,'features',nf_features(i).name);
-    dataframeFeatures{i} = readtable(fname);
+        dataframeFeatures{i} = readtable(fname, ...
+        'VariableNamingRule', 'preserve');
 end
 
 end

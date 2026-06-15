@@ -11,10 +11,10 @@ features_transformed=data.features_transformed;
 allX = extrusions_transformed(:,1);
 allY = extrusions_transformed(:,2);
 
-grid.nBins = params.nBins;
+spatialGrid.nBins = params.nBins;
 
-grid.xEdges = linspace(min(allX), max(allX), params.nBins+1);
-grid.yEdges = linspace(min(allY), max(allY), params.nBins+1);
+spatialGrid.xEdges = linspace(min(allX), max(allX), params.nBins+1);
+spatialGrid.yEdges = linspace(min(allY), max(allY), params.nBins+1);
 
 %% Processing (Spatio Temporal discretisation)
 
@@ -22,7 +22,7 @@ grid.yEdges = linspace(min(allY), max(allY), params.nBins+1);
     extrusions_transformed, ...
     masks_transformed, ...
     features_transformed, ...
-    grid, ...
+    spatialGrid, ...
     params);
 
 %% Summary
@@ -31,7 +31,7 @@ summary = aggregateHeatmaps(allData);
 
 save(fullfile(filepath,'dataframes', ...
     strcat('STdata_',alignMethod,'_',num2str(params.timeStep),'h_timeStep.mat')), ...
-    'summary','allData','grid','params');
+    'summary','allData','spatialGrid','params');
 
 %% Valid Bin Mask
 
@@ -58,7 +58,7 @@ end
 
 %% PLOTS
 
-plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,timeBins)
+plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
 plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
 plotHeatmaps(summary);
 
