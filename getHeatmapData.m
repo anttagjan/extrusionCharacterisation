@@ -1,4 +1,4 @@
-function getHeatmapData(filepath, filenames, alignMethod, data,Rglobal)
+function [allData,summary,params]=getHeatmapData(filepath, filenames, alignMethod, data,Rglobal)
 
 params.nBins = 30;
 params.timeStep = 1;
@@ -67,8 +67,8 @@ end
 
 %% PLOTS
 
-plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
+% plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
 plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
-plotHeatmaps(summary);
+% plotHeatmaps(summary);
 
 end

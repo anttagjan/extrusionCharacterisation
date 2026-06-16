@@ -24,8 +24,8 @@ else
     load(matFile);
 end
 
-getHeatmapData(filepath, filenames,selectedLandmarks, data,Rglobal);
+[allData,summary,params]=getHeatmapData(filepath, filenames,selectedLandmarks, data,Rglobal);
 
-getSumAverageCVHeatmap(filepath,selectedLandmarks,extrusions_transformed,allValidN_full,timeStep,nBins);
-getRegionalHeatmap(filepath,filenames,selectedLandmarks,procruste_transformed,allValidN_full,heatmapSum,nBins,timeStep);
+% getSumAverageCVHeatmap(filepath,selectedLandmarks,extrusions_transformed,data,params);
+getRegionalHeatmap(filepath,filenames,selectedLandmarks,data.extrusions_transformed,allData,Rglobal,summary,params);
 

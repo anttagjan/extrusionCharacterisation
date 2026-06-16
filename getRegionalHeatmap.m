@@ -1,8 +1,18 @@
-function getRegionalHeatmap(filepath,filenames,selectedLandmarks,procruste_transformed,allValidN_full,heatmapSum,nBins,timeStep)
-totalExtrusions = sum(heatmapSum(:));
+function getRegionalHeatmap(filepath,filenames,selectedLandmarks,extrusions_transformed,allData,Rglobal,summary,params)
+heatmapSum=summary.totalExtrusions;
+
+extrusionDist = cellfun(@(d) ...
+    getfield(d,'extrusions','count'), ...
+    allData, ...
+    'UniformOutput', false);
+
+totalExtrusions = sum(summary.totalExtrusions(:));
 fprintf('[INFO] Global number of extrusions: %d\n', totalExtrusions);
 
-movies = unique(procruste_transformed(:,3));
+movies = unique(extrusions_transformed(:,4));
+timeStep = params.timeStep;
+nBins = params.nBins;
+
 nColors = 256;
 cmap = [linspace(1,1,nColors)', linspace(1,0,nColors)', linspace(1,0,nColors)'];
 globalMax = prctile(heatmapSum(:), 100);
@@ -10,18 +20,23 @@ globalMax = prctile(heatmapSum(:), 100);
 zoneNames = {'Midline', 'Posterior', 'Up', 'Down'};
 zoneColors = [0 0 1; 1 0.5 0; 0 1 0; 1 1 0]; % blue, orange, green, yellow
 
-time = round(procruste_transformed(:,4),4);
+time = round(extrusions_transformed(:,3),4);
 timeBins = floor(min(time)):timeStep:ceil(max(time));
 
-Xall = procruste_transformed(:,1);
-Yall = procruste_transformed(:,2);
+spatialGrid.nBins = params.nBins;
 
-marginX = 0.05 * (max(Xall) - min(Xall));
-marginY = 0.05 * (max(Yall) - min(Yall));
-xEdges = linspace(min(Xall)-marginX, max(Xall)+marginX, nBins+1);
-yEdges = linspace(min(Yall)-marginY, max(Yall)+marginY, nBins+1);
-xCenters = (xEdges(1:end-1) + xEdges(2:end))/2;
-yCenters = (yEdges(1:end-1) + yEdges(2:end))/2;
+spatialGrid.xEdges = linspace( ...
+    Rglobal.XWorldLimits(1), ...
+    Rglobal.XWorldLimits(2), ...
+    params.nBins+1);
+
+spatialGrid.yEdges = linspace( ...
+    Rglobal.YWorldLimits(1), ...
+    Rglobal.YWorldLimits(2), ...
+    params.nBins+1);
+xCenters = (spatialGrid.xEdges (1:end-1) + spatialGrid.xEdges (2:end))/2;
+yCenters = (spatialGrid.yEdges (1:end-1) + spatialGrid.yEdges (2:end))/2;
+
 
 % Try loading previous selection
 zoneFile = fullfile(filepath,"dataframes","selectedZones",strcat(selectedLandmarks,'_selected_zones.mat'));
@@ -56,7 +71,7 @@ end
 % C: 15x57 cell array, each cell is a 30x30 double matrix
 
 % Step 1: Get size
-[rows, cols] = size(allValidN_full);  % rows=15, cols=57
+[rows, cols] = size(extrusionDist);  % rows=15, cols=57
 
 % Step 2: Initialize a logical mask — true where all are NaN
 always_nan_mask = true(nBins, nBins);  % start assuming all are NaN
@@ -64,7 +79,7 @@ always_nan_mask = true(nBins, nBins);  % start assuming all are NaN
 % Step 3: Loop through the cell array and update the mask
 for i = 1:rows
     for j = 1:cols
-        current_matrix = allValidN_full{i,j};
+        current_matrix = extrusionDist{i,j};
         % Update mask: keep only positions that are still NaN
         always_nan_mask = always_nan_mask & isnan(current_matrix);
     end
@@ -98,7 +113,7 @@ for zone = 1:nZones
         count = 0;
         normCount= 0;
         for nMovie = 1:max(movies)
-            histo = allValidN_full{nMovie,nTime};
+            histo = extrusionDist{nMovie,nTime};
                 % Count values
             if ~isempty(histo)
                 % Count valid
@@ -170,4 +185,8 @@ TsumNaNFinal = [Tsum_nan; totalRowNorm];
 writetable(TsumNaNFinal, fullfile(filepath, "dataframes", excelFileNameNaN), ...
            'Sheet', 'Summary_normalised', 'WriteMode', 'overwritesheet');
 fprintf('[INFO] Summary_normalised sheet exported.\n');
+
+exportFeatureDistributions( ...
+    filepath, filenames, allData, selectedBins, timeBins);
+    
 end
