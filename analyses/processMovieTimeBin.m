@@ -1,6 +1,6 @@
 function result = processMovieTimeBin( ...
     movieID, timeIndex, timeBins, ...
-    extrusions_transformed, masks_transformed, ...
+    extrusions_transformed, masks_transformed, masks_relativeTime, ...
     features_transformed, grid)
 
 timeLimits = [timeBins(timeIndex), timeBins(timeIndex+1)];
@@ -10,31 +10,37 @@ idx = extrusions_transformed(:,4)==movieID & ...
       extrusions_transformed(:,3)>=timeLimits(1) & ...
       extrusions_transformed(:,3)<timeLimits(2);
 
-idxF = features_transformed(:,8)==movieID & ...
-       features_transformed(:,6)>=timeLimits(1) & ...
-       features_transformed(:,6)<timeLimits(2);
+idxF = features_transformed.movie==movieID & ...
+       features_transformed.frame>=timeLimits(1) & ...
+       features_transformed.frame<timeLimits(2);
 
 %% --- TISSUE MASK ---
-
 mask = masks_transformed{movieID};
+tm = masks_relativeTime(movieID,:)';
+
+maskFrames =  ...
+    tm >= timeLimits(1) & ...
+    tm < timeLimits(2);
 
 if isempty(mask)
     validMask = [];
 else
-    % mask is assumed: H x W x T logical
-    invalidRegion = mask(:,:,timeIndex) == 0;
-    validMask = ~invalidRegion;
+    validMask = any(mask(:,:,maskFrames),3);
+    % validMask = imdilate(validMask, strel('disk',6));
 end
 
 tissue = getTissueMetrics(validMask, grid);
 
 %% --- CELLS ---
 
-xC = features_transformed(idxF,1);
-yC = features_transformed(idxF,2);
-aC = features_transformed(idxF,4);
+xC = features_transformed.x(idxF);
+yC = features_transformed.y(idxF);
+aC = features_transformed.area(idxF);
+eC = features_transformed.eccentricity(idxF);
+arC = features_transformed.aspect_ratio(idxF);
+oC= features_transformed.orientation(idxF);
 
-cells = getCellMetrics(xC, yC, aC, tissue, grid);
+cells = getCellMetrics(xC, yC, aC,eC,arC,oC, tissue, grid);
 
 %% --- EXTRUSIONS ---
 

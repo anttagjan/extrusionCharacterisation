@@ -18,13 +18,13 @@ matFile = fullfile(filepath,'dataframes', ...
     sprintf('data_%sAlignment_transformed.mat', selectedLandmarks));
 
 if ~exist(matFile,'file')
-    data = runPreprocessing(filepath, nf_extrusions,nf_divisions, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate, selectedLandmarks);
-    save(matFile, 'data', '-v7.3');
+    [data,Rglobal] = runPreprocessing(filepath, nf_extrusions,nf_divisions, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate, selectedLandmarks);
+    save(matFile, 'data','Rglobal', '-v7.3');
 else
     load(matFile);
 end
 
-getHeatmapData(filepath, filenames,selectedLandmarks, data);
+getHeatmapData(filepath, filenames,selectedLandmarks, data,Rglobal);
 
 getSumAverageCVHeatmap(filepath,selectedLandmarks,extrusions_transformed,allValidN_full,timeStep,nBins);
 getRegionalHeatmap(filepath,filenames,selectedLandmarks,procruste_transformed,allValidN_full,heatmapSum,nBins,timeStep);

@@ -33,8 +33,12 @@ LM_tr = mov * A + t;
 %% --- Transform features ---
 csv = dataframeFeatures{i};
 
-csv.x = csv.x* A + t;
-csv.y = csv.y* A + t;
+xy = [csv.y, csv.x];
+
+feat_tr = xy * A + t;
+
+csv.y = feat_tr(:,1);
+csv.x = feat_tr(:,2);
 
 if ismember('file', csv.Properties.VariableNames)
     csv = removevars(csv, 'file');

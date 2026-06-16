@@ -1,4 +1,4 @@
-function data = runPreprocessing(filepath, nf_extrusion,nf_division, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate,alignMethod)
+function [data,Rglobal] = runPreprocessing(filepath, nf_extrusion,nf_division, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate,alignMethod)
 
 [landmarks] = loadLandmarks(filepath,alignMethod, nf_landmarks);
 [coordinates] = loadExtrusions(filepath, nf_extrusion);
@@ -41,8 +41,8 @@ for i = 1:nMovies
     features_transformed = [features_transformed; feat_tr];
     masks_transformed{i} = mask_tr;
     piv_transformed{i} = piv_tr;
-    masks_relativeTime = [masks_relativeTime; timeMask, i*ones(size(timeMask,1),1)];
-    piv_relativeTime = [piv_relativeTime; timePIV, i*ones(size(timePIV,1),1)];
+    masks_relativeTime = [masks_relativeTime; timeMask];
+    piv_relativeTime = [piv_relativeTime; timePIV];
 end
 
 data.extrusions_transformed = extrusions_transformed;
