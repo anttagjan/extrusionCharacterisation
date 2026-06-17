@@ -67,8 +67,8 @@ end
 
 %% PLOTS
 
-% plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
+plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
 plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
-% plotHeatmaps(summary);
+plotHeatmaps(summary);
 
 end

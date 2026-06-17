@@ -40,9 +40,9 @@ for i = 1:nMovies
     feat_tr.movie = i * ones(height(feat_tr), 1);
     features_transformed = [features_transformed; feat_tr];
     masks_transformed{i} = mask_tr;
-    piv_transformed{i} = piv_tr;
+    % piv_transformed{i} = piv_tr;
     masks_relativeTime = [masks_relativeTime; timeMask];
-    piv_relativeTime = [piv_relativeTime; timePIV];
+    % piv_relativeTime = [piv_relativeTime; timePIV];
 end
 
 data.extrusions_transformed = extrusions_transformed;
@@ -51,8 +51,8 @@ data.landmarks_transformed = landmarks_transformed;
 data.features_transformed = features_transformed;
 data.masks_transformed = masks_transformed;
 data.masks_relativeTime = masks_relativeTime;
-data.piv_transformed = piv_transformed;
-data.piv_relativeTime = piv_relativeTime;
+% data.piv_transformed = piv_transformed;
+% data.piv_relativeTime = piv_relativeTime;
 
 data.refMovieID = refMovieID;
 data.meanShape = meanShape;

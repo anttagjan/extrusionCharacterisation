@@ -16,6 +16,7 @@ Afull = [A, [0;0]; t, 1];
 tform = affine2d(Afull);
 
 timeFactor = frameRate / 60;
+shift = [Rglobal.XWorldLimits(1), Rglobal.YWorldLimits(1)];
 
 %% --- Transform extrusions ---
 coord_i = coordinates(coordinates(:,3) == i,:);
@@ -33,12 +34,12 @@ LM_tr = mov * A + t;
 %% --- Transform features ---
 csv = dataframeFeatures{i};
 
-xy = [csv.y, csv.x];
+xy = [csv.x, csv.y];
 
 feat_tr = xy * A + t;
-
-csv.y = feat_tr(:,1);
-csv.x = feat_tr(:,2);
+feat_tr = feat_tr - shift;
+csv.x = feat_tr(:,1);
+csv.y = feat_tr(:,2);
 
 if ismember('file', csv.Properties.VariableNames)
     csv = removevars(csv, 'file');
@@ -64,20 +65,22 @@ for k = 1:T
     mask_tr(:,:,k) = logical(imwarp(maskStack(:,:,k), Rin, tform, ...
         'OutputView', Rglobal, ...
         'InterpolationMethod','nearest'));
+    % mask_tr(:,:,k) = imwarp(maskStack(:,:,k), Rin, tform, ...
+    % 'InterpolationMethod','nearest');
 end
 
 % time vector stays separate 
 timeMask = ((1:T) - timeTable.peaks(i)) * timeFactor;
 
 %% --- Transform PIV vectors ---
-pivData = piv{i};   % cell array: 1 x T, each 74x74 single
-Tp = size(pivData.v_original,1);
-
-% [Hp, Wp] = size(pivData.v_original{1});
-
-% Rin = imref2d([H W]);  % original image space
-
-piv_tr = cell(1,Tp);
+% pivData = piv{i};   % cell array: 1 x T, each 74x74 single
+% Tp = size(pivData.v_original,1);
+% 
+% % [Hp, Wp] = size(pivData.v_original{1});
+% 
+% % Rin = imref2d([H W]);  % original image space
+% 
+% piv_tr = cell(1,Tp);
 
 % for k = 1:Tp
 % 
@@ -99,5 +102,14 @@ piv_tr = cell(1,Tp);
 % 
 % end
 
-timePIV = timeMask+timeFactor; % PIV is always measured refered to the t-1 
+% timePIV = timeMask+timeFactor; % PIV is always measured refered to the t-1 
+timePIV=[];
+piv_tr=[];
+
+
+
+Ext(:,1:2) = Ext(:,1:2) - shift;
+Dv(:,1:2)  = Dv(:,1:2)  - shift;
+LM_tr  = LM_tr  - shift;
+
 end
