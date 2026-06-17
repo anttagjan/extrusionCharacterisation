@@ -15,7 +15,7 @@ landmarks_transformed = [];
 features_transformed = [];
 piv_transformed = [];
 masks_transformed = cell(1,nMovies);
-masks_relativeTime = [];
+masks_relativeTime = cell(1,nMovies);
 piv_relativeTime = [];
 
 %% Global reference
@@ -41,7 +41,7 @@ for i = 1:nMovies
     features_transformed = [features_transformed; feat_tr];
     masks_transformed{i} = mask_tr;
     % piv_transformed{i} = piv_tr;
-    masks_relativeTime = [masks_relativeTime; timeMask];
+    masks_relativeTime{i} = timeMask;
     % piv_relativeTime = [piv_relativeTime; timePIV];
 end
 
