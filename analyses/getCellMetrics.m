@@ -21,10 +21,16 @@ cells.areaSum = accumarray([iy ix], area, [nBins nBins], @sum, 0);
 cells.areaMean = accumarray([iy ix], area, [nBins nBins], @mean, NaN);
 cells.eccentricityMean = accumarray([iy ix], eccentricity, [nBins nBins], @mean, NaN);
 cells.aspectRatioMean = accumarray([iy ix], aspectRatio, [nBins nBins], @mean, NaN);
-cells.orientationMean = accumarray([iy ix], orientation, [nBins nBins], @mean, NaN);
 
-cells.cellDensity = cells.count ./ tissue.area;
-cells.cellDensity(tissue.area==0) = NaN;
+cells.cellDensity = cells.count ./ cells.areaSum; % Better sum of areas than tissue mask (fill holes)
+cells.cellDensity(cells.areaSum==0) = NaN;
+
+% weighted average
+weights = ones(size(orientation)); 
+cosComp = accumarray([iy ix], weights .* cos(oriRad), [nBins nBins], @sum, NaN);
+sinComp = accumarray([iy ix], weights .* sin(oriRad), [nBins nBins], @sum, NaN);
+normW = accumarray([iy ix], weights, [nBins nBins], @sum, NaN);
+cells.orientationMean = rad2deg(0.5 * atan2(sinComp./normW, cosComp./normW));
 
 % apply tissue mask
 cells.count(~tissue.validBinMask) = NaN;

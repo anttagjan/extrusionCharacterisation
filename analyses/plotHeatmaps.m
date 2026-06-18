@@ -27,7 +27,7 @@ colorbar;
 figure;
 imagesc(summary.extrusionDensity);
 axis image;
-title('Extrusion density (events / tissue)');
+title('Extrusion rate (events / tissue)');
 colorbar;
 
 % =========================

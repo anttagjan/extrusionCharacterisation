@@ -2,14 +2,18 @@ function exportFeatureDistributions(filepath, filenames, allData, selectedBins, 
 
 nMovies = size(allData,1);
 nT      = size(allData,2);
-nZones  = size(selectedBins,3);
 
-zoneNames = {'Midline','Posterior','Up','Down'};
+% =========================================================
+% ADD GLOBAL ZONE (ALL SPACE)
+% =========================================================
 
-features = {'cellArea','cellDensity','eccentricity','aspectRatio','orientation'};
+allMask = true(size(selectedBins(:,:,1)));
+selectedBins = cat(3, selectedBins, allMask);
 
-excelRaw  = fullfile(filepath,"dataframes","Feature_RAW.xlsx");
-excelNorm = fullfile(filepath,"dataframes","Feature_NORMALISED.xlsx");
+zoneNames = {'Midline','Posterior','Up','Down','All'};
+nZones = size(selectedBins,3);
+
+excelRaw = fullfile(filepath,"dataframes","Feature_RAW.xlsx");
 
 % =========================================================
 % LOOP ZONES
@@ -17,86 +21,139 @@ excelNorm = fullfile(filepath,"dataframes","Feature_NORMALISED.xlsx");
 
 for z = 1:nZones
 
-    zoneMask = selectedBins(:,:,z);
+    zoneMask = double(selectedBins(:,:,z));
+    zoneMask(~zoneMask) = NaN;
 
-    % =========================
-    % RAW accumulators
-    % =========================
-    sumArea   = zeros(length(timeBins), nMovies);
-    sumCells  = zeros(length(timeBins), nMovies);
-    sumTissue = zeros(length(timeBins), nMovies);
+    % =====================================================
+    % OUTPUT MATRICES
+    % =====================================================
 
-    sumEcc = zeros(length(timeBins), nMovies);
-    sumAR  = zeros(length(timeBins), nMovies);
-    sumOri = zeros(length(timeBins), nMovies);
+    meanCells  = NaN(length(timeBins), nMovies);
+    meanArea   = NaN(length(timeBins), nMovies);
+    meanTissue = NaN(length(timeBins), nMovies);
 
-    % =========================
+    meanEcc = NaN(length(timeBins), nMovies);
+    meanAR  = NaN(length(timeBins), nMovies);
+    meanOri = NaN(length(timeBins), nMovies);
+
+    % =====================================================
     % LOOP DATA
-    % =========================
+    % =====================================================
 
     for m = 1:nMovies
         for t = 1:nT
 
             d = allData{m,t};
+
             if isempty(d) || ~isfield(d,'cells') || ~isfield(d,'tissue')
                 continue
             end
 
-            c  = d.cells.count;            c(isnan(c)) = 0;
-            a  = d.cells.areaSum;          a(isnan(a)) = 0;
-            ec = d.cells.eccentricityMean; ec(isnan(ec)) = 0;
-            ar = d.cells.aspectRatioMean;  ar(isnan(ar)) = 0;
-            or = d.cells.orientationMean;  or(isnan(or)) = 0;
+            % ----------------------------
+            % LOAD MAPS
+            % ----------------------------
+
+            c  = d.cells.count;
+            a  = d.cells.areaSum;
+
+            ec = d.cells.eccentricityMean;
+            ar = d.cells.aspectRatioMean;
+            or = d.cells.orientationMean;
 
             tissue = d.tissue.area;
+
+            % ----------------------------
+            % CLEAN NaNs
+            % ----------------------------
+
+            c(isnan(c)) = 0;
+            a(isnan(a)) = 0;
+
+            ec(isnan(ec)) = 0;
+            ar(isnan(ar)) = 0;
+            or(isnan(or)) = 0;
+
             tissue(isnan(tissue)) = 0;
 
-            % apply zone mask
+            % ----------------------------
+            % APPLY MASK
+            % ----------------------------
+
             cZ = c .* zoneMask;
             aZ = a .* zoneMask;
+
             ecZ = ec .* zoneMask;
             arZ = ar .* zoneMask;
             orZ = or .* zoneMask;
+
             tZ  = tissue .* zoneMask;
 
-            % RAW
-            sumCells(t,m)  = sum(cZ(:));
-            sumArea(t,m)   = sum(aZ(:));
-            sumEcc(t,m)    = sum(ecZ(:));
-            sumAR(t,m)     = sum(arZ(:));
-            sumOri(t,m)    = sum(orZ(:));
-            sumTissue(t,m) = sum(tZ(:));
+            % =================================================
+            % BASIC METRICS
+            % =================================================
+
+            meanCells(t,m)  = mean(cZ(:),'omitnan');
+            meanTissue(t,m) = mean(tZ(:),'omitnan');
+
+            nCells = nansum(cZ(:));
+
+            if nCells > 0
+
+                % ----------------------------
+                % AREA (per cell)
+                % ----------------------------
+                meanArea(t,m) = nansum(aZ(:)) / nCells;
+
+                % ----------------------------
+                % ECCENTRICITY (weighted)
+                % ----------------------------
+                meanEcc(t,m) = nansum(ecZ(:).*cZ(:)) / nCells;
+
+                % ----------------------------
+                % ASPECT RATIO (weighted)
+                % ----------------------------
+                meanAR(t,m)  = nansum(arZ(:).*cZ(:)) / nCells;
+
+                % ----------------------------
+                % ORIENTATION (CIRCULAR [-90,90])
+                % ----------------------------
+
+                valid = cZ(:) > 0;
+
+                if any(valid)
+
+                    weights = cZ(valid);
+                    angles = deg2rad(orZ(valid) * 2);
+
+                    x = nansum(weights .* cos(angles));
+                    y = nansum(weights .* sin(angles));
+
+                    meanOri(t,m) = rad2deg(0.5 * atan2(y, x));
+
+                end
+            end
+
         end
     end
 
-    % =========================================================
-    % NORMALIZATION (same logic style as your extrusion code)
-    % =========================================================
+    % =====================================================
+    % EXPORT
+    % =====================================================
 
-    cellDensity = sumCells ./ max(sumTissue,1);
-    meanArea    = sumArea  ./ max(sumCells,1);
+    writeFeatureSheets( ...
+        excelRaw, ...
+        zoneNames{z}, ...
+        meanCells, ...
+        meanArea, ...
+        meanEcc, ...
+        meanAR, ...
+        meanOri, ...
+        meanTissue, ...
+        filenames, ...
+        timeBins);
 
-    eccNorm = sumEcc ./ max(sumCells,1);
-    arNorm  = sumAR  ./ max(sumCells,1);
-    oriNorm = sumOri ./ max(sumCells,1);
+    fprintf('[INFO] Zone %s exported\n', zoneNames{z});
 
-    % =========================================================
-    % WRITE RAW (same structure as extrusion summary)
-    % =========================================================
-
-    writeFeatureSheets(excelRaw, zoneNames{z}, ...
-        sumCells, sumArea, sumEcc, sumAR, sumOri, sumTissue, ...
-        filenames, timeBins);
-
-    % =========================================================
-    % WRITE NORMALISED
-    % =========================================================
-
-    writeFeatureSheets(excelNorm, zoneNames{z}, ...
-        cellDensity, meanArea, eccNorm, arNorm, oriNorm, sumTissue, ...
-        filenames, timeBins);
-
-    fprintf('[INFO] Zone %s exported (raw + normalised)\n', zoneNames{z});
 end
 
 end
