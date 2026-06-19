@@ -34,12 +34,12 @@ cells.cellDensity(cells.areaSum == 0) = NaN;
 % ORIENTATION (CORRECT CIRCULAR AXIAL)
 % =========================================================
 
-oriRad = deg2rad(orientation * 2);
+oriRad = deg2rad(2 * orientation);
 
 cosComp = accumarray([iy ix], cos(oriRad), [nBins nBins], @sum, 0);
 sinComp = accumarray([iy ix], sin(oriRad), [nBins nBins], @sum, 0);
 
-cells.orientationMean = rad2deg(0.5 * atan2(sinComp, cosComp));
+cells.orientationMean = abs(rad2deg(0.5 * atan2(sinComp, cosComp)));
 
 % =========================================================
 % APPLY TISSUE MASK

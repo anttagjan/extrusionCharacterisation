@@ -115,7 +115,7 @@ for z = 1:nZones
                     x = nansum(weights .* cos(angles));
                     y = nansum(weights .* sin(angles));
 
-                    meanOri(t,m) = rad2deg(0.5 * atan2(y, x));
+                    meanOri(t,m) = abs(rad2deg(0.5 * atan2(y, x)));
 
                 end
             end

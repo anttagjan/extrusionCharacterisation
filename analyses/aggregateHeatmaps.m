@@ -110,6 +110,6 @@ summary.meanAspectRatio(sumCells == 0) = NaN;
 % ORIENTATION (CIRCULAR CORRECT)
 %% =========================================================
 
-summary.meanOrientation = rad2deg(0.5 * atan2(sumOriY, sumOriX));
+summary.meanOrientation = abs(rad2deg(0.5 * atan2(sumOriY, sumOriX)));
 
 end
