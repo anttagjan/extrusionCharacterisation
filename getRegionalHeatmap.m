@@ -1,12 +1,12 @@
 function getRegionalHeatmap(filepath,filenames,selectedLandmarks,extrusions_transformed,allData,Rglobal,summary,params)
-heatmapSum=summary.totalExtrusions;
+heatmapSum=summary.totalExtr;
 
 extrusionDist = cellfun(@(d) ...
     getfield(d,'extrusions','count'), ...
     allData, ...
     'UniformOutput', false);
 
-totalExtrusions = sum(summary.totalExtrusions(:));
+totalExtrusions = sum(summary.totalExtr(:));
 fprintf('[INFO] Global number of extrusions: %d\n', totalExtrusions);
 
 movies = unique(extrusions_transformed(:,4));

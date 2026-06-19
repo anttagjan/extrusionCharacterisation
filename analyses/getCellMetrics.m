@@ -7,6 +7,7 @@ valid = ~isnan(ix) & ~isnan(iy);
 
 ix = ix(valid);
 iy = iy(valid);
+
 area = area(valid);
 eccentricity = eccentricity(valid);
 aspectRatio = aspectRatio(valid);
@@ -14,25 +15,36 @@ orientation = orientation(valid);
 
 nBins = grid.nBins;
 
+% --- basic maps ---
 cells.count = accumarray([iy ix], 1, [nBins nBins], @sum, 0);
-
 cells.areaSum = accumarray([iy ix], area, [nBins nBins], @sum, 0);
 
 cells.areaMean = accumarray([iy ix], area, [nBins nBins], @mean, NaN);
 cells.eccentricityMean = accumarray([iy ix], eccentricity, [nBins nBins], @mean, NaN);
 cells.aspectRatioMean = accumarray([iy ix], aspectRatio, [nBins nBins], @mean, NaN);
 
-cells.cellDensity = cells.count ./ cells.areaSum; % Better sum of areas than tissue mask (fill holes)
-cells.cellDensity(cells.areaSum==0) = NaN;
+% =========================================================
+% CELL DENSITY (your chosen definition)
+% =========================================================
 
-% weighted average
-weights = ones(size(orientation)); 
-cosComp = accumarray([iy ix], weights .* cos(oriRad), [nBins nBins], @sum, NaN);
-sinComp = accumarray([iy ix], weights .* sin(oriRad), [nBins nBins], @sum, NaN);
-normW = accumarray([iy ix], weights, [nBins nBins], @sum, NaN);
-cells.orientationMean = rad2deg(0.5 * atan2(sinComp./normW, cosComp./normW));
+cells.cellDensity = cells.count ./ cells.areaSum;
+cells.cellDensity(cells.areaSum == 0) = NaN;
 
-% apply tissue mask
+% =========================================================
+% ORIENTATION (CORRECT CIRCULAR AXIAL)
+% =========================================================
+
+oriRad = deg2rad(orientation * 2);
+
+cosComp = accumarray([iy ix], cos(oriRad), [nBins nBins], @sum, 0);
+sinComp = accumarray([iy ix], sin(oriRad), [nBins nBins], @sum, 0);
+
+cells.orientationMean = rad2deg(0.5 * atan2(sinComp, cosComp));
+
+% =========================================================
+% APPLY TISSUE MASK
+% =========================================================
+
 cells.count(~tissue.validBinMask) = NaN;
 cells.areaSum(~tissue.validBinMask) = NaN;
 cells.areaMean(~tissue.validBinMask) = NaN;

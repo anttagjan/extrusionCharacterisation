@@ -1,18 +1,29 @@
 function writeFeatureSheets(excelFile, zoneName, ...
-    cellDensity, meanArea, ecc, ar, ori, tissue, filenames, timeBins)
+    meanCells,totalCells, meanArea, ecc, ori, filenames, timeBins)
 
 % =========================
-% CELL DENSITY
+% CELL NUMBER
 % =========================
 
-T = array2table(cellDensity, 'VariableNames', filenames);
+T = array2table(meanCells, 'VariableNames', filenames);
 T.Time = timeBins(:);
 T = movevars(T,'Time','Before',1);
 
 writetable(T, excelFile, ...
-    'Sheet', strcat(zoneName,'_CellDensity'), ...
+    'Sheet', strcat(zoneName,'_AverageCells'), ...
     'WriteMode','overwritesheet');
 
+% =========================
+% TOTAL CELLS
+% =========================
+
+T = array2table(totalCells, 'VariableNames', filenames);
+T.Time = timeBins(:);
+T = movevars(T,'Time','Before',1);
+
+writetable(T, excelFile, ...
+    'Sheet', strcat(zoneName,'_TotalCells'), ...
+    'WriteMode','overwritesheet');
 % =========================
 % MEAN AREA
 % =========================
@@ -35,18 +46,6 @@ T = movevars(T,'Time','Before',1);
 
 writetable(T, excelFile, ...
     'Sheet', strcat(zoneName,'_Eccentricity'), ...
-    'WriteMode','overwritesheet');
-
-% =========================
-% ASPECT RATIO
-% =========================
-
-T = array2table(ar, 'VariableNames', filenames);
-T.Time = timeBins(:);
-T = movevars(T,'Time','Before',1);
-
-writetable(T, excelFile, ...
-    'Sheet', strcat(zoneName,'_AspectRatio'), ...
     'WriteMode','overwritesheet');
 
 % =========================

@@ -82,7 +82,7 @@ summary.totalArea  = sumArea;
 summary.totalExtr  = sumExtr;
 
 %% =========================================================
-% PACKING INDEX (YOUR CHOICE)
+% NO CELLS PER AREA 
 %% =========================================================
 
 summary.cellDensity = sumCells ./ sumArea;
@@ -99,6 +99,7 @@ summary.extrusionRate(sumCells == 0) = NaN;
 % SHAPE FEATURES (CELL-WEIGHTED)
 %% =========================================================
 
+summary.meanArea = sumArea ./ sumCells;
 summary.meanEccentricity = sumEcc ./ sumCells;
 summary.meanAspectRatio  = sumAR  ./ sumCells;
 

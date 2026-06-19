@@ -7,7 +7,7 @@ title('Cell count');
 colorbar;
 
 figure;
-imagesc(summary.meanCellArea);
+imagesc(summary.meanArea);
 axis image;
 title('Mean cell area');
 colorbar;
@@ -19,13 +19,13 @@ title('Cell density (cells / tissue)');
 colorbar;
 
 figure;
-imagesc(summary.totalExtrusions);
+imagesc(summary.totalExtr);
 axis image;
 title('Extrusion count');
 colorbar;
 
 figure;
-imagesc(summary.extrusionDensity);
+imagesc(summary.extrusionRate);
 axis image;
 title('Extrusion rate (events / tissue)');
 colorbar;
@@ -39,10 +39,10 @@ imagesc(summary.meanEccentricity);
 axis image; set(gca,'YDir','normal');
 title('Mean eccentricity'); colorbar; colormap(jet);
 
-figure;
-imagesc(summary.meanAspectRatio);
-axis image; set(gca,'YDir','normal');
-title('Mean aspect ratio'); colorbar; colormap(jet);
+% figure;
+% imagesc(summary.meanAspectRatio);
+% axis image; set(gca,'YDir','normal');
+% title('Mean aspect ratio'); colorbar; colormap(jet);
 
 figure;
 imagesc(summary.meanOrientation);

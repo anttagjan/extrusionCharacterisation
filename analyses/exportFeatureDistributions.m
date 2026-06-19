@@ -30,10 +30,8 @@ for z = 1:nZones
 
     meanCells  = NaN(length(timeBins), nMovies);
     meanArea   = NaN(length(timeBins), nMovies);
-    meanTissue = NaN(length(timeBins), nMovies);
 
     meanEcc = NaN(length(timeBins), nMovies);
-    meanAR  = NaN(length(timeBins), nMovies);
     meanOri = NaN(length(timeBins), nMovies);
 
     % =====================================================
@@ -57,7 +55,6 @@ for z = 1:nZones
             a  = d.cells.areaSum;
 
             ec = d.cells.eccentricityMean;
-            ar = d.cells.aspectRatioMean;
             or = d.cells.orientationMean;
 
             tissue = d.tissue.area;
@@ -70,7 +67,6 @@ for z = 1:nZones
             a(isnan(a)) = 0;
 
             ec(isnan(ec)) = 0;
-            ar(isnan(ar)) = 0;
             or(isnan(or)) = 0;
 
             tissue(isnan(tissue)) = 0;
@@ -81,38 +77,29 @@ for z = 1:nZones
 
             cZ = c .* zoneMask;
             aZ = a .* zoneMask;
-
             ecZ = ec .* zoneMask;
-            arZ = ar .* zoneMask;
             orZ = or .* zoneMask;
-
-            tZ  = tissue .* zoneMask;
 
             % =================================================
             % BASIC METRICS
             % =================================================
 
-            meanCells(t,m)  = mean(cZ(:),'omitnan');
-            meanTissue(t,m) = mean(tZ(:),'omitnan');
+            meanCells(t,m)  = mean(cZ(cZ>0),'omitnan');
 
             nCells = nansum(cZ(:));
+            totalCells(t,m) = nCells;
 
             if nCells > 0
 
                 % ----------------------------
-                % AREA (per cell)
+                % AREA PER CELL
                 % ----------------------------
                 meanArea(t,m) = nansum(aZ(:)) / nCells;
 
                 % ----------------------------
-                % ECCENTRICITY (weighted)
+                % ECCENTRICITY (cell-weighted)
                 % ----------------------------
-                meanEcc(t,m) = nansum(ecZ(:).*cZ(:)) / nCells;
-
-                % ----------------------------
-                % ASPECT RATIO (weighted)
-                % ----------------------------
-                meanAR(t,m)  = nansum(arZ(:).*cZ(:)) / nCells;
+                meanEcc(t,m) = nansum(ecZ(:) .* cZ(:)) / nCells;
 
                 % ----------------------------
                 % ORIENTATION (CIRCULAR [-90,90])
@@ -123,7 +110,7 @@ for z = 1:nZones
                 if any(valid)
 
                     weights = cZ(valid);
-                    angles = deg2rad(orZ(valid) * 2);
+                    angles  = deg2rad(orZ(valid) * 2);
 
                     x = nansum(weights .* cos(angles));
                     y = nansum(weights .* sin(angles));
@@ -144,11 +131,10 @@ for z = 1:nZones
         excelRaw, ...
         zoneNames{z}, ...
         meanCells, ...
+        totalCells, ...
         meanArea, ...
         meanEcc, ...
-        meanAR, ...
         meanOri, ...
-        meanTissue, ...
         filenames, ...
         timeBins);
 
