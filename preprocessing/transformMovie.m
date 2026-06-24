@@ -1,11 +1,10 @@
 function [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr, timeMask,timePIV] = transformMovie( ...
-    i,  refMovieID,landmarks, coordinates,division, masks,piv, dataframeFeatures, timeTable, frameRate, Rglobal)
+    i,  refMovie,landmarks, coordinates,division, masks,piv, dataframeFeatures, timeTable, frameRate, Rglobal)
 
 %% --- Procrustes alignment ---
-ref = landmarks(landmarks(:,3)==refMovieID,1:2);
 mov = landmarks(landmarks(:,3)==i,1:2);
 
-[~,~,Tr] = procrustes(ref,mov, ...
+[~,~,Tr] = procrustes(refMovie,mov, ...
     'Scaling',true, ...
     'Reflection',false);
 
