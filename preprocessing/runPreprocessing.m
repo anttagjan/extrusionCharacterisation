@@ -28,6 +28,7 @@ piv_relativeTime = [];
 
 %% Global reference
 % averaging landmark positions and picking as a reference the most central movie in dataset
+<<<<<<< Updated upstream
 meanShape = buildMeanMovieShape(landmarks);
 refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie / alignement movies with landmarks
 
@@ -51,7 +52,11 @@ end
 
 for i = 1:nMovies
 
+<<<<<<< Updated upstream
     [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovieID, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal); %Transformation, rotation etc....Procrustes analysis
+=======
+    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovie, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal);
+>>>>>>> Stashed changes
 
     extrusions_transformed = [extrusions_transformed; Ext, i*ones(size(Ext,1),1)];
     divisions_transformed = [divisions_transformed; Dv, i*ones(size(Dv,1),1)];
