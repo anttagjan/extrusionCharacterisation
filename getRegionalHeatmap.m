@@ -1,15 +1,51 @@
-function getRegionalHeatmap(filepath,filenames,selectedLandmarks,extrusions_transformed,allData,Rglobal,summary,params)
-heatmapSum=summary.totalExtr;
+function getRegionalHeatmap( ...
+        filepath,...
+        filenames,...
+        selectedLandmarks,...
+        events_transformed,...
+        allData,...
+        Rglobal,...
+        summary,...
+        params,...
+        eventName)
 
-extrusionDist = cellfun(@(d) ...
-    getfield(d,'extrusions','count'), ...
-    allData, ...
-    'UniformOutput', false);
 
-totalExtrusions = sum(summary.totalExtr(:));
-fprintf('[INFO] Global number of extrusions: %d\n', totalExtrusions);
+persistent one_time_execution %Variable global pour executer une seule fois
+if isempty(one_time_execution)
+    one_time_execution = true;
+end
 
-movies = unique(extrusions_transformed(:,4));
+
+if strcmp(eventName,'extrusions')
+    heatmapSum = summary.totalExtr;
+else
+    heatmapSum = summary.totalDiv;
+end
+
+eventDist = cell(size(allData));
+
+for i = 1:size(allData,1)
+    for j = 1:size(allData,2)
+
+        d = allData{i,j};
+
+        if isempty(d)
+            continue
+        end
+
+        if isfield(d,eventName)
+            eventDist{i,j} = d.(eventName).count;
+        end
+    end
+end
+
+totalEvents = sum(heatmapSum(:),'omitnan');
+
+fprintf('[INFO] Global number of %s: %d\n', ...
+    eventName,...
+    totalEvents);
+
+movies = unique(events_transformed(:,4));
 timeStep = params.timeStep;
 nBins = params.nBins;
 
@@ -20,7 +56,7 @@ globalMax = prctile(heatmapSum(:), 100);
 zoneNames = {'Midline', 'Posterior', 'Up', 'Down'};
 zoneColors = [0 0 1; 1 0.5 0; 0 1 0; 1 1 0]; % blue, orange, green, yellow
 
-time = round(extrusions_transformed(:,3),4);
+time = round(events_transformed(:,3),4);
 timeBins = floor(min(time)):timeStep:ceil(max(time));
 
 spatialGrid.nBins = params.nBins;
@@ -71,29 +107,64 @@ end
 % C: 15x57 cell array, each cell is a 30x30 double matrix
 
 % Step 1: Get size
-[rows, cols] = size(extrusionDist);  % rows=15, cols=57
+[rows, cols] = size(eventDist);
 
-% Step 2: Initialize a logical mask — true where all are NaN
-always_nan_mask = true(nBins, nBins);  % start assuming all are NaN
+always_nan_mask = true(nBins, nBins);
 
-% Step 3: Loop through the cell array and update the mask
 for i = 1:rows
     for j = 1:cols
-        current_matrix = extrusionDist{i,j};
-        % Update mask: keep only positions that are still NaN
-        always_nan_mask = always_nan_mask & isnan(current_matrix);
+
+        current_matrix = eventDist{i,j};
+
+        if isempty(current_matrix)
+            continue
+        end
+
+        if ~isequal(size(current_matrix), [nBins nBins])
+            continue
+        end
+
+        always_nan_mask = ...
+            always_nan_mask & isnan(current_matrix);
+
     end
 end
 
 % always_nan_mask is now 30x30, true at positions that are NaN in *all* 15x57 cells
-figure,
-imagesc(always_nan_mask); axis image;colorbar; colormap gray;
-title('Bins that are always NaN in all cells');
 
+
+
+if one_time_execution == true
+    figure,
+    imagesc(always_nan_mask); axis image;colorbar; colormap gray;
+    title('Bins that are always NaN in all cells');
+    one_time_execution = false;
+end
 %% Excel files
 % === Combined Excel with Multi-Sheets ===
-excelFileName = strcat('HistogramExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_',selectedLandmarks,'Alignment_Summary.xlsx');
-excelFileNameNaN = strcat('HistogramNormalisedExtrusions_',num2str(nBins),'x',num2str(nBins),'_',num2str(round(timeStep,4)),'hStep',num2str(max(movies)),'Movies_',selectedLandmarks,'Alignment_Summary.xlsx');
+eventLabel = lower(eventName);
+eventLabel(1) = upper(eventLabel(1));
+
+excelFileName = strcat( ...
+    'Histogram', ...
+    eventLabel, '_', ...
+    num2str(nBins), 'x', num2str(nBins), '_', ...
+    num2str(round(timeStep,4)), 'hStep', ...
+    num2str(max(movies)), 'Movies_', ...
+    selectedLandmarks, ...
+    'Alignment_Summary.xlsx');
+
+excelFileNameNaN = strcat( ...
+    'HistogramNormalised', ...
+    eventLabel, '_', ...
+    num2str(nBins), 'x', num2str(nBins), '_', ...
+    num2str(round(timeStep,4)), 'hStep', ...
+    num2str(max(movies)), 'Movies_', ...
+    selectedLandmarks, ...
+    'Alignment_Summary.xlsx');
+
+
+
 nZones = size(selectedBins,3);
 summaryCounts = zeros(length(timeBins), max(movies));
 summaryNormCounts = zeros(length(timeBins), max(movies));
@@ -113,7 +184,7 @@ for zone = 1:nZones
         count = 0;
         normCount= 0;
         for nMovie = 1:max(movies)
-            histo = extrusionDist{nMovie,nTime};
+            histo = eventDist{nMovie,nTime};
                 % Count values
             if ~isempty(histo)
                 % Count valid
@@ -186,7 +257,10 @@ writetable(TsumNaNFinal, fullfile(filepath, "dataframes", excelFileNameNaN), ...
            'Sheet', 'Summary_normalised', 'WriteMode', 'overwritesheet');
 fprintf('[INFO] Summary_normalised sheet exported.\n');
 
-exportFeatureDistributions( ...
-    filepath, filenames, allData, selectedBins, timeBins);
-    
+
+if strcmp(eventName,'extrusions') %Export qu'une fois
+    exportFeatureDistributions( ...
+        filepath, filenames, allData, selectedBins, timeBins);
+end 
+
 end

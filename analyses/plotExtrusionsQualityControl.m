@@ -1,8 +1,12 @@
+
+%%Dessin du plot quality control pour division + extrusions
+%% EventName etc...
 function plotExtrusionsQualityControl( ...
     allData, ...
     filenames, ...
     landmarks, ...
-    spatialGrid)
+    spatialGrid, ...
+    eventName)
 
 %% =========================================================
 % ROBUST MOVIE INDEXING
@@ -26,12 +30,12 @@ for mi = 1:nMoviesPlot
     for t = 1:nTimes
 
         d = allData{m,t};
-        if isempty(d) || ~isfield(d,'extrusions')
+        if isempty(d) || ~isfield(d, eventName)
             continue
         end
-
-        allX = [allX; d.extrusions.allX(:)];
-        allY = [allY; d.extrusions.allY(:)];
+        ev = d.(eventName);
+        allX = [allX; ev.allX(:)];
+        allY = [allY; ev.allY(:)];
     end
 end
 
@@ -50,7 +54,7 @@ ymax = ymax + pad*dy;
 % FIGURE
 %% =========================================================
 
-fig = figure('Color','w','Name','Extrusion QC Viewer');
+fig = figure('Color','w','Name',[eventName 'QC Viewer']);
 
 ax = axes('Parent',fig,'Units','normalized','Position',[0.22 0.12 0.73 0.8]);
 hold(ax,'on');
@@ -188,12 +192,12 @@ function update()
             d = allData{m,t};
             if isempty(d), continue; end
 
-            if isfield(d,'extrusions')
-
-                validX = [validX; d.extrusions.validX(:)];
-                validY = [validY; d.extrusions.validY(:)];
-                invalidX = [invalidX; d.extrusions.invalidX(:)];
-                invalidY = [invalidY; d.extrusions.invalidY(:)];
+            if isfield(d, eventName)
+                ev = d.(eventName);
+                validX = [validX; ev.validX(:)];
+                validY = [validY; ev.validY(:)];
+                invalidX = [invalidX; ev.invalidX(:)];
+                invalidY = [invalidY; ev.invalidY(:)];
             end
 
             if isfield(d,'tissue') && isfield(d.tissue,'validBinMask')

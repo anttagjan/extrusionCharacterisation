@@ -1,6 +1,6 @@
 function result = processMovieTimeBin( ...
     movieID, timeIndex, timeBins, ...
-    extrusions_transformed, masks_transformed, masks_relativeTime, ...
+    extrusions_transformed, divisions_transformed, masks_transformed, masks_relativeTime, ...
     features_transformed, grid)
 
 timeLimits = [timeBins(timeIndex), timeBins(timeIndex+1)];
@@ -9,6 +9,10 @@ timeLimits = [timeBins(timeIndex), timeBins(timeIndex+1)];
 idx = extrusions_transformed(:,4)==movieID & ...
       extrusions_transformed(:,3)>=timeLimits(1) & ...
       extrusions_transformed(:,3)<timeLimits(2);
+% Division x,y, temps, numero film
+idxD = divisions_transformed(:,4)==movieID & ...
+       divisions_transformed(:,3)>=timeLimits(1) & ...
+       divisions_transformed(:,3)<timeLimits(2);
 
 idxF = features_transformed.movie==movieID & ...
        features_transformed.frame>=timeLimits(1) & ...
@@ -79,6 +83,49 @@ yEinvalid = yEall(~keep);
 extrusions = getExtrusionMetrics( ...
     xEvalid, yEvalid, tissue, grid);
 
+%% --- DIVISIONS --- RAJOUT
+
+
+xDall = divisions_transformed(idxD,1);
+yDall = divisions_transformed(idxD,2);
+
+
+keepD = false(size(xDall));
+
+if ~isempty(validMask)
+
+    xPix = round(xDall);
+    yPix = round(yDall);
+
+    insideImage = ...
+        xPix >= 1 & xPix <= size(validMask,2) & ...
+        yPix >= 1 & yPix <= size(validMask,1);
+
+    if any(insideImage)
+
+        idxPixels = sub2ind( ...
+            size(validMask), ...
+            yPix(insideImage), ...
+            xPix(insideImage));
+
+        keepD(insideImage) = validMask(idxPixels);
+
+    end
+end
+xDvalid = xDall(keepD);
+yDvalid = yDall(keepD);
+
+xDinvalid = xDall(~keepD);
+yDinvalid = yDall(~keepD);
+
+divisions = getDivisionMetrics( ...
+    xDvalid,...
+    yDvalid,...
+    tissue,...
+    grid);
+
+result.divisions = divisions;
+
 %% --- QC INFO ---
 
 extrusions.allX = xEall;
@@ -94,14 +141,33 @@ extrusions.nTotal = numel(xEall);
 extrusions.nValid = numel(xEvalid);
 extrusions.nInvalid = numel(xEinvalid);
 
+%RAJOUT
+divisions.allX = xDall;
+divisions.allY = yDall;
+
+divisions.validX = xDvalid;
+divisions.validY = yDvalid;
+
+divisions.invalidX = xDinvalid;
+divisions.invalidY = yDinvalid;
+
+divisions.nTotal = numel(xDall);
+divisions.nValid = numel(xDvalid);
+divisions.nInvalid = numel(xDinvalid);
+
 %% --- OUTPUT ---
 
 result.tissue = tissue;
 result.cells = cells;
 result.extrusions = extrusions;
+result.divisions = divisions;
 result.validMask = validMask;
 
 result.QC.fractionValid = extrusions.nValid / max(extrusions.nTotal,1);
 result.QC.fractionInvalid = extrusions.nInvalid / max(extrusions.nTotal,1);
+result.QC.divisionFractionValid = ...
+    divisions.nValid / max(divisions.nTotal,1);
 
+result.QC.divisionFractionInvalid = ...
+    divisions.nInvalid / max(divisions.nTotal,1);
 end

@@ -3,14 +3,13 @@ function [allData,summary,params]=getHeatmapData(filepath, filenames, alignMetho
 params.nBins = 30;
 params.timeStep = 1;
 extrusions_transformed= data.extrusions_transformed;
+divisions_transformed= data.divisions_transformed; %RAJOUT
 landmarks_transformed=data.landmarks_transformed;
 masks_transformed=data.masks_transformed;
 masks_relativeTime = data.masks_relativeTime;
 features_transformed=data.features_transformed;
 
-%% Preparing heatmap grid
-allX = extrusions_transformed(:,1);
-allY = extrusions_transformed(:,2);
+
 
 spatialGrid.nBins = params.nBins;
 
@@ -28,6 +27,7 @@ spatialGrid.yEdges = linspace( ...
 
 [allData,timeBins] = processAllMovies( ...
     extrusions_transformed, ...
+    divisions_transformed, ... %AJOUT
     masks_transformed, ...
     masks_relativeTime, ...
     features_transformed, ...
@@ -65,10 +65,34 @@ for m = 1:nMovies
 end
 
 
-%% PLOTS
+%% PLOTS pour DIVISIONS aussi
 
-plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
-plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
-plotHeatmaps(summary);
+%plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid, 'extrusions')
+%plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
+
+%plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid, 'divisions')
+
+plotExtrusionsQualityControl( ...
+    allData, ...
+    filenames, ...
+    landmarks_transformed, ...
+    spatialGrid, ...
+    'extrusions')
+
+
+plotExtrusions( ...
+    filenames, ...
+    extrusions_transformed, ...
+    landmarks_transformed);
+
+%POur division
+plotExtrusionsQualityControl( ...
+    allData, ...
+    filenames, ...
+    landmarks_transformed, ...
+    spatialGrid, ...
+    'divisions')
+
+plotHeatmaps(summary)
 
 end

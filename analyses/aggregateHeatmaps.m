@@ -11,6 +11,8 @@ sumExtr  = [];
 sumEcc = [];
 sumAR  = [];
 
+sumDiv  = [];
+
 sumOriX = [];
 sumOriY = [];
 
@@ -34,6 +36,8 @@ for i = 1:nM
             sumArea  = zeros(nBins);
             sumExtr  = zeros(nBins);
 
+            sumDiv  = zeros(nBins);
+
             sumEcc = zeros(nBins);
             sumAR  = zeros(nBins);
 
@@ -53,12 +57,26 @@ for i = 1:nM
 
         e  = d.extrusions.count;       e(isnan(e)) = 0;
 
+        if isfield(d,'divisions')
+
+            dv = d.divisions.count;
+            dv(isnan(dv)) = 0;
+
+        else
+
+            dv = zeros(size(e));
+
+        end
+
+
+
         valid = ~isnan(d.cells.count);
 
         % --- accumulate ---
         sumCells(valid) = sumCells(valid) + c(valid);
         sumArea(valid)  = sumArea(valid)  + a(valid);
         sumExtr(valid)  = sumExtr(valid)  + e(valid);
+        sumDiv(valid)  = sumDiv(valid)  + dv(valid);
 
         % --- morphology (cell-weighted) ---
         sumEcc(valid) = sumEcc(valid) + ec(valid) .* c(valid);
@@ -77,9 +95,11 @@ end
 % OUTPUT RAW MAPS
 %% =========================================================
 
+
 summary.totalCells = sumCells;
 summary.totalArea  = sumArea;
 summary.totalExtr  = sumExtr;
+summary.totalDiv  = sumDiv;
 
 %% =========================================================
 % NO CELLS PER AREA 
@@ -94,6 +114,8 @@ summary.cellDensity(sumArea == 0) = NaN;
 
 summary.extrusionRate = sumExtr ./ sumCells;
 summary.extrusionRate(sumCells == 0) = NaN;
+summary.divisionRate = sumDiv ./ sumCells;
+summary.divisionRate(sumCells == 0) = NaN;
 
 %% =========================================================
 % SHAPE FEATURES (CELL-WEIGHTED)

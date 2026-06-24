@@ -1,3 +1,5 @@
+
+%%Dessin de chaque Heatmaps
 function plotHeatmaps(summary)
 
 figure;
@@ -22,6 +24,13 @@ figure;
 imagesc(summary.totalExtr);
 axis image;
 title('Extrusion count');
+colorbar;
+
+%%FIugre pour division
+figure;
+imagesc(summary.totalDiv);
+axis image;
+title('Division count');
 colorbar;
 
 figure;

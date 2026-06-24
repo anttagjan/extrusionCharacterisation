@@ -1,11 +1,19 @@
 function [data,Rglobal] = runPreprocessing(filepath, nf_extrusion,nf_division, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate,alignMethod)
 
 [landmarks] = loadLandmarks(filepath,alignMethod, nf_landmarks);
+
 [coordinates] = loadExtrusions(filepath, nf_extrusion);
 [masks] = loadMasks(filepath, nf_masks);
 [features] = loadFeatures(filepath, nf_features);
 [division] = loadCellDivisions(filepath, nf_division);
-[piv] = loadPIVcoords(filepath, nf_piv);
+
+disp('Movie IDs in landmarks:')
+disp(unique(landmarks(:,3)))
+
+disp('Number of masks:')
+disp(length(masks))
+% [piv] = loadPIVcoords(filepath, nf_piv);
+[piv] = [];
 
 nMovies = length(nf_extrusion);
 
@@ -21,8 +29,8 @@ piv_relativeTime = [];
 %% Global reference
 % averaging landmark positions and picking as a reference the most central movie in dataset
 meanShape = buildMeanMovieShape(landmarks);
+refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie / alignement movies with landmarks
 
-refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie
 movieIDs = unique(landmarks(:,3));
 
 Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
@@ -32,7 +40,7 @@ save(fullfile(filepath,'meanShape_procrustes.mat'), ...
 
 for i = 1:nMovies
 
-    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovieID, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal);
+    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovieID, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal); %Transformation, rotation etc....Procrustes analysis
 
     extrusions_transformed = [extrusions_transformed; Ext, i*ones(size(Ext,1),1)];
     divisions_transformed = [divisions_transformed; Dv, i*ones(size(Dv,1),1)];
