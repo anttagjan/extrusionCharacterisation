@@ -1,7 +1,5 @@
-function [allData,summary,params]=getHeatmapData(filepath, filenames, alignMethod, data,Rglobal)
+function [allData,summary,spatialGrid]=getHeatmapData(filenames, data,Rglobal,params)
 
-params.nBins = 30;
-params.timeStep = 1;
 extrusions_transformed= data.extrusions_transformed;
 divisions_transformed= data.divisions_transformed; %RAJOUT
 landmarks_transformed=data.landmarks_transformed;
@@ -35,12 +33,7 @@ spatialGrid.yEdges = linspace( ...
     params);
 
 %% Summary
-
 summary = aggregateHeatmaps(allData);
-
-save(fullfile(filepath,'dataframes', ...
-    strcat('STdata_',alignMethod,'_',num2str(params.timeStep),'h_timeStep.mat')), ...
-    'summary','allData','spatialGrid','params');
 
 %% Valid Bin Mask
 
@@ -65,6 +58,7 @@ for m = 1:nMovies
 end
 
 
+<<<<<<< Updated upstream
 %% PLOTS pour DIVISIONS aussi
 
 %plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid, 'extrusions')
@@ -94,5 +88,11 @@ plotExtrusionsQualityControl( ...
     'divisions')
 
 plotHeatmaps(summary)
+=======
+%% PLOTS
+plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
+plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
+plotHeatmaps(summary);
+>>>>>>> Stashed changes
 
 end
