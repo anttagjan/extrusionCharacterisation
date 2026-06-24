@@ -32,11 +32,22 @@ meanShape = buildMeanMovieShape(landmarks);
 refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie / alignement movies with landmarks
 
 movieIDs = unique(landmarks(:,3));
+=======
+if ~exist(fullfile(filepath,'meanShape_procrustes.mat'),'file')
+    meanShape = buildMeanMovieShape(landmarks);
 
-Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
+    refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie
+    movieIDs = unique(landmarks(:,3));
+>>>>>>> Stashed changes
 
-save(fullfile(filepath,'meanShape_procrustes.mat'), ...
-    'meanShape','refMovieID', 'Rglobal');
+    Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
+    refMovie = landmarks(landmarks(:,3)==refMovieID,1:2);
+    save(fullfile(filepath,'meanShape_procrustes.mat'), ...
+        'meanShape','refMovieID','refMovie', 'Rglobal');
+else
+    load(fullfile(filepath,'meanShape_procrustes.mat'), ...
+        'meanShape','refMovieID','refMovie', 'Rglobal');
+end
 
 for i = 1:nMovies
 
