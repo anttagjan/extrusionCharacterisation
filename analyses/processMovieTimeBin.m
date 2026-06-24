@@ -33,12 +33,14 @@ tissue = getTissueMetrics(validMask, grid);
 
 %% --- CELLS ---
 
-xC = features_transformed.x(idxF);
-yC = features_transformed.y(idxF);
-aC = features_transformed.area(idxF);
-eC = features_transformed.eccentricity(idxF);
-arC = features_transformed.aspect_ratio(idxF);
-oC= features_transformed.orientation(idxF);
+xC = getFeatureOrDefault(features_transformed, 'x', idxF);
+yC = getFeatureOrDefault(features_transformed, 'y', idxF);
+aC = getFeatureOrDefault(features_transformed, 'area', idxF);
+
+% Optional features: if missing, fill with NaNs
+eC  = getFeatureOrDefault(features_transformed, 'eccentricity', idxF);
+arC = getFeatureOrDefault(features_transformed, 'aspect_ratio', idxF);
+oC  = getFeatureOrDefault(features_transformed, 'orientation', idxF);
 
 cells = getCellMetrics(xC, yC, aC,eC,arC,oC, tissue, grid);
 
