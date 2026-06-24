@@ -187,28 +187,26 @@ for zone = 1:nZones
             histo = eventDist{nMovie,nTime};
                 % Count values
             if ~isempty(histo)
-                % Count valid
-                maskedHisto = histo;
-                maskedHisto(isnan(maskedHisto)) = 0;
-                maskedHisto = maskedHisto .* zoneMask;
-                count = sum(maskedHisto(:));
-                countsPerMovie(nTime, nMovie) = count;
 
-                % Count NaNs
-                nanMask = isnan(histo) & zoneMask;
-                nanCount = sum(nanMask(:))/sum(zoneMask(:));
-                
-                if nanCount < 1
-                normCount = count/(1-nanCount);
-                normCountsPerMovie(nTime, nMovie) = normCount;
+                validMask = zoneMask & ~isnan(histo);
+
+                nValidBins = sum(validMask(:));
+                nZoneBins  = sum(zoneMask(:));
+
+                if nValidBins > 0
+                    count = sum(histo(validMask), 'omitnan');
+                    countsPerMovie(nTime, nMovie) = count;
+
+                    fracValid = nValidBins / nZoneBins;
+                    normCountsPerMovie(nTime, nMovie) = count / fracValid;
                 else
-                normCount = NaN;
-                normCountsPerMovie(nTime, nMovie) = normCount; 
+                    countsPerMovie(nTime, nMovie) = NaN;
+                    normCountsPerMovie(nTime, nMovie) = NaN;
                 end
+
             else
-                % If histogram is empty (rare), treat entire zone as NaNs
-                countsPerMovie(nTime, nMovie) = 0;
-                normCountsPerMovie(nTime, nMovie) = 0;
+                countsPerMovie(nTime, nMovie) = NaN;
+                normCountsPerMovie(nTime, nMovie) = NaN;
             end
 
             summaryCounts(nTime, nMovie) = summaryCounts(nTime, nMovie) + count;
