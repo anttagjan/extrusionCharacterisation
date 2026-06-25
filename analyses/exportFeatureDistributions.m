@@ -1,4 +1,4 @@
-function exportFeatureDistributions(filepath, filenames, allData, selectedBins, timeBins)
+function exportFeatureDistributions(filepath, filenames,featuresFileName, allData, selectedBins, timeBins)
 
 nMovies = size(allData,1);
 nT      = size(allData,2);
@@ -13,7 +13,7 @@ selectedBins = cat(3, selectedBins, allMask);
 zoneNames = {'Midline','Posterior','Up','Down','All'};
 nZones = size(selectedBins,3);
 
-excelRaw = fullfile(filepath,"dataframes","Feature_RAW.xlsx");
+excelRaw = fullfile(filepath,"dataframes",featuresFileName);
 
 % =========================================================
 % LOOP ZONES

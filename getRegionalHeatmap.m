@@ -170,13 +170,16 @@ excelFileNameNaN = strcat( ...
     selectedLandmarks, ...
     'Alignment_Summary.xlsx');
 
-
+featuresFileName = strcat( ...
+    'Histogram_', ...
+    'Features', '_', ...
+    num2str(nBins), 'x', num2str(nBins), '_', ...
+    num2str(round(timeStep,4)), 'hStep', ...
+    num2str(max(movies)), 'Movies_', ...
+    selectedLandmarks, ...
+    'Alignment_Summary.xlsx');
 
 nZones = size(selectedBins,3);
-summaryCounts = zeros(length(timeBins), max(movies));
-summaryNormCounts = zeros(length(timeBins), max(movies));
-% zoneSums = zeros(length(timeBins), nZones); % For summary sheet
-% zoneSumsNaN = zeros(length(timeBins), nZones);  % For summary sheet (NaNs)
 
 for zone = 1:nZones
     zoneMask = selectedBins(:,:,zone);
@@ -194,32 +197,28 @@ for zone = 1:nZones
             histo = eventDist{nMovie,nTime};
                 % Count values
             if ~isempty(histo)
-                % Count valid
-                maskedHisto = histo;
-                maskedHisto(isnan(maskedHisto)) = 0;
-                maskedHisto = maskedHisto .* zoneMask;
-                count = sum(maskedHisto(:));
-                countsPerMovie(nTime, nMovie) = count;
 
-                % Count NaNs
-                nanMask = isnan(histo) & zoneMask;
-                nanCount = sum(nanMask(:))/sum(zoneMask(:));
-                
-                if nanCount < 1
-                normCount = count/(1-nanCount);
-                normCountsPerMovie(nTime, nMovie) = normCount;
+                validMask = zoneMask & ~isnan(histo);
+
+                nValidBins = sum(validMask(:));
+                nZoneBins  = sum(zoneMask(:));
+
+                if nValidBins > 0
+                    count = sum(histo(validMask), 'omitnan');
+                    countsPerMovie(nTime, nMovie) = count;
+
+                    fracValid = nValidBins / nZoneBins;
+                    normCountsPerMovie(nTime, nMovie) = count / fracValid;
                 else
-                normCount = NaN;
-                normCountsPerMovie(nTime, nMovie) = normCount; 
+                    countsPerMovie(nTime, nMovie) = NaN;
+                    normCountsPerMovie(nTime, nMovie) = NaN;
                 end
+
             else
-                % If histogram is empty (rare), treat entire zone as NaNs
-                countsPerMovie(nTime, nMovie) = 0;
-                normCountsPerMovie(nTime, nMovie) = 0;
+                countsPerMovie(nTime, nMovie) = NaN;
+                normCountsPerMovie(nTime, nMovie) = NaN;
             end
 
-            summaryCounts(nTime, nMovie) = summaryCounts(nTime, nMovie) + count;
-            summaryNormCounts(nTime, nMovie) = summaryNormCounts(nTime, nMovie) + normCount;
         end
     end
     T = array2table(countsPerMovie, 'VariableNames', filenames);
@@ -238,36 +237,58 @@ for zone = 1:nZones
     fprintf('[INFO] Sheet "%s" exported to %s.\n', sheetName, excelFileNameNaN);
 end
 
-% === Add Summary Sheet ===
-Tsum_counts = array2table(summaryCounts, 'VariableNames', filenames);
-Tsum_counts.Time = timeBins(:);
-Tsum_counts = movevars(Tsum_counts, 'Time', 'Before', 1);
-totalRow = array2table(nan(1, width(Tsum_counts)), 'VariableNames', Tsum_counts.Properties.VariableNames);
-totalRow{1,2:end} = sum(summaryCounts,1); 
-totalRow.Time = "Total sum";
-TsumFinal = [Tsum_counts; totalRow];
+% === Add Global Sheet ===
+allMask = true(nBins, nBins);
+allMask(always_nan_mask == 1) = 0;
 
-writetable(TsumFinal, fullfile(filepath, "dataframes", excelFileName), ...
-           'Sheet', 'Summary', 'WriteMode', 'overwritesheet');
-fprintf('[INFO] Summary sheet exported.\n');
+allCountsPerMovie     = NaN(length(timeBins), max(movies));
+allNormCountsPerMovie = NaN(length(timeBins), max(movies));
 
-%% === Summary Sheet for NaN Counts ===
-Tsum_nan = array2table(summaryNormCounts, 'VariableNames', filenames);
-Tsum_nan.Time = timeBins(:);
-Tsum_nan = movevars(Tsum_nan, 'Time', 'Before', 1);
-totalRowNorm = array2table(nan(1, width(Tsum_nan)), 'VariableNames', Tsum_nan.Properties.VariableNames);
-totalRowNorm{1,2:end} = sum(summaryNormCounts, 1, 'omitnan'); 
-totalRowNorm.Time = "Total sum";
-TsumNaNFinal = [Tsum_nan; totalRowNorm];
+for nTime = 1:length(timeBins)
+    for nMovie = 1:max(movies)
 
-writetable(TsumNaNFinal, fullfile(filepath, "dataframes", excelFileNameNaN), ...
-           'Sheet', 'Summary_normalised', 'WriteMode', 'overwritesheet');
-fprintf('[INFO] Summary_normalised sheet exported.\n');
+        histo = eventDist{nMovie, nTime};
 
+        if isempty(histo)
+            continue
+        end
+
+        validMask = allMask & ~isnan(histo);
+
+        nValidBins = sum(validMask(:));
+        nAllBins   = sum(allMask(:));
+
+        if nValidBins > 0
+            count = sum(histo(validMask), 'omitnan');
+            allCountsPerMovie(nTime, nMovie) = count;
+
+            fracValid = nValidBins / nAllBins;
+            allNormCountsPerMovie(nTime, nMovie) = count / fracValid;
+        end
+    end
+end
+
+% RAW ALL
+Tall = array2table(allCountsPerMovie, 'VariableNames', filenames);
+Tall.Time = round(timeBins(:), 4);
+Tall = movevars(Tall, 'Time', 'Before', 1);
+
+writetable(Tall, fullfile(filepath,"dataframes",excelFileName), ...
+    'Sheet', 'All', 'WriteMode', 'overwritesheet');
+fprintf('[INFO] Sheet "All" exported.\n');
+
+% NORMALISED ALL
+TallNorm = array2table(allNormCountsPerMovie, 'VariableNames', filenames);
+TallNorm.Time = round(timeBins(:), 4);
+TallNorm = movevars(TallNorm, 'Time', 'Before', 1);
+
+writetable(TallNorm, fullfile(filepath,"dataframes",excelFileNameNaN), ...
+    'Sheet', 'All', 'WriteMode', 'overwritesheet');
+fprintf('[INFO] Sheet "All" exported to %s.\n', excelFileNameNaN);
 
 if strcmp(eventName,'extrusions') %Export qu'une fois
     exportFeatureDistributions( ...
-        filepath, filenames, allData, selectedBins, timeBins);
+        filepath, filenames,featuresFileName, allData, selectedBins, timeBins);
 end 
 
 end

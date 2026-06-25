@@ -28,19 +28,35 @@ piv_relativeTime = [];
 
 %% Global reference
 % averaging landmark positions and picking as a reference the most central movie in dataset
+<<<<<<< Updated upstream
 meanShape = buildMeanMovieShape(landmarks);
 refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie / alignement movies with landmarks
 
 movieIDs = unique(landmarks(:,3));
+=======
+if ~exist(fullfile(filepath,'meanShape_procrustes.mat'),'file')
+    meanShape = buildMeanMovieShape(landmarks);
 
-Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
+    refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie
+    movieIDs = unique(landmarks(:,3));
+>>>>>>> Stashed changes
 
-save(fullfile(filepath,'meanShape_procrustes.mat'), ...
-    'meanShape','refMovieID', 'Rglobal');
+    Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
+    refMovie = landmarks(landmarks(:,3)==refMovieID,1:2);
+    save(fullfile(filepath,'meanShape_procrustes.mat'), ...
+        'meanShape','refMovieID','refMovie', 'Rglobal');
+else
+    load(fullfile(filepath,'meanShape_procrustes.mat'), ...
+        'meanShape','refMovieID','refMovie', 'Rglobal');
+end
 
 for i = 1:nMovies
 
+<<<<<<< Updated upstream
     [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovieID, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal); %Transformation, rotation etc....Procrustes analysis
+=======
+    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovie, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal);
+>>>>>>> Stashed changes
 
     extrusions_transformed = [extrusions_transformed; Ext, i*ones(size(Ext,1),1)];
     divisions_transformed = [divisions_transformed; Dv, i*ones(size(Dv,1),1)];
