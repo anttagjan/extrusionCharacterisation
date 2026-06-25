@@ -41,5 +41,9 @@ end
 
 %% Regional analysis
 % getSumAverageCVHeatmap(filepath,selectedLandmarks,extrusions_transformed,data,params);
-getRegionalHeatmap(filepath,filenames,selectedLandmarks,data.extrusions_transformed,allData,Rglobal,summary,params);
 
+% extrusions
+getRegionalHeatmap(filepath,filenames,selectedLandmarks,data.extrusions_transformed,allData,Rglobal,summary,params,'extrusions');
+
+%divisions
+getRegionalHeatmap(filepath,filenames,selectedLandmarks,data.divisions_transformed,allData,Rglobal,summary,params,'divisions');

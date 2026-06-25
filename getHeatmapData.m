@@ -7,8 +7,6 @@ masks_transformed=data.masks_transformed;
 masks_relativeTime = data.masks_relativeTime;
 features_transformed=data.features_transformed;
 
-
-
 spatialGrid.nBins = params.nBins;
 
 spatialGrid.xEdges = linspace( ...
@@ -57,14 +55,7 @@ for m = 1:nMovies
     end
 end
 
-
-<<<<<<< Updated upstream
-%% PLOTS pour DIVISIONS aussi
-
-%plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid, 'extrusions')
-%plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
-
-%plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid, 'divisions')
+%% PLOTS 
 
 plotExtrusionsQualityControl( ...
     allData, ...
@@ -73,13 +64,11 @@ plotExtrusionsQualityControl( ...
     spatialGrid, ...
     'extrusions')
 
-
 plotExtrusions( ...
     filenames, ...
     extrusions_transformed, ...
     landmarks_transformed);
 
-%POur division
 plotExtrusionsQualityControl( ...
     allData, ...
     filenames, ...
@@ -88,11 +77,5 @@ plotExtrusionsQualityControl( ...
     'divisions')
 
 plotHeatmaps(summary)
-=======
-%% PLOTS
-plotExtrusionsQualityControl(allData,filenames,landmarks_transformed,spatialGrid)
-plotExtrusions(filenames,extrusions_transformed,landmarks_transformed);
-plotHeatmaps(summary);
->>>>>>> Stashed changes
 
 end
