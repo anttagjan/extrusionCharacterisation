@@ -10,9 +10,9 @@ function getRegionalHeatmap( ...
         eventName)
 
 
-persistent one_time_execution %Variable global pour executer une seule fois
+persistent one_time_execution %Variable pour executer une seule fois
 if isempty(one_time_execution)
-    one_time_execution = true;
+    one_time_execution = "true";
 end
 
 
@@ -41,7 +41,7 @@ end
 
 totalEvents = sum(heatmapSum(:),'omitnan');
 
-fprintf('[INFO] Global number of %s: %d\n', ...
+fprintf('\n[INFO] Global number of %s: %d\n', ...
     eventName,...
     totalEvents);
 
@@ -134,12 +134,19 @@ end
 
 
 
-if one_time_execution == true
+if one_time_execution == "true"
     figure,
     imagesc(always_nan_mask); axis image;colorbar; colormap gray;
     title('Bins that are always NaN in all cells');
-    one_time_execution = false;
+    one_time_execution = "false";
+
+
+elseif one_time_execution == "false" %% PARTIE A REVOIR: POUR QUE DIVISION CALCUL AUSSI POUR MALE
+    one_time_execution = "test";
+elseif one_time_execution == "test"
+    one_time_execution = "true";
 end
+
 %% Excel files
 % === Combined Excel with Multi-Sheets ===
 eventLabel = lower(eventName);

@@ -6,7 +6,9 @@ function plotExtrusionsQualityControl( ...
     filenames, ...
     landmarks, ...
     spatialGrid, ...
-    eventName)
+    eventName, ...
+    sex_icon,...
+    filepath)
 
 %% =========================================================
 % ROBUST MOVIE INDEXING
@@ -261,5 +263,18 @@ end
 
 %% INIT
 update();
+
+
+saveFolder = fullfile(filepath,'figures_program');
+
+if ~exist(saveFolder,'dir') %Si le dossier existe pas, le créer
+    mkdir(saveFolder)
+    fprintf("création par quality control")
+end
+
+savefig(gcf,...
+    fullfile(saveFolder,...
+    [eventName '_qualityControl_' sex_icon '.fig']))
+
 
 end

@@ -1,31 +1,136 @@
 close all
 %% load data
-filepath = 'D:\Antonio\extrusion systematic characterisation\test';
+fprintf("Initializing")
+filepath = 'D:\Nathan';
 frameRate = 5;
 
-timeDataframe = readtable(fullfile(filepath,'dataframes','timeAlignment.xlsx'));
+timeDataframe = readtable( ...
+    fullfile(filepath,'dataframes','timeAlignment.xlsx'));
 
 %% Alignment choice
 [selectedColumn, selectedLandmarks] = askAlignmentMethod();
 
-timeTable = buildTimeTable(timeDataframe, selectedColumn);
+[nf_extrusions,nf_divisions,nf_masks,nf_piv,nf_features] = ...
+    loadFileLists(filepath);
 
-[nf_extrusions,nf_divisions, nf_masks,nf_piv, nf_features] = loadFileLists(filepath);
-nf_landmarks = dir(fullfile(filepath,'input',selectedLandmarks,'*landmarks.zip'));
+nf_landmarks = dir( ...
+    fullfile(filepath,'input',selectedLandmarks,'*landmarks.zip'));
 
-filenames = {nf_extrusions.name};
-matFile = fullfile(filepath,'dataframes', ...
-    sprintf('data_%sAlignment_transformed.mat', selectedLandmarks));
+sexList = {'F','M'};
 
-if ~exist(matFile,'file')
-    [data,Rglobal] = runPreprocessing(filepath, nf_extrusions,nf_divisions, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate, selectedLandmarks);
-    save(matFile, 'data','Rglobal', '-v7.3');
-else
-    load(matFile);
+for iSex = 1:length(sexList) %Pour males & Femelles
+
+    currentSex = sexList{iSex};
+
+    fprintf('\n=====================\n');
+    fprintf('Processing %s\n', currentSex);
+    fprintf('=====================\n');
+
+    %% Select movies of the current sex
+
+    idxSex = strcmp(timeDataframe.sex,currentSex); %Création matrice True/False si M ou F
+
+    selectedNames = erase( ...
+        string(timeDataframe.Name(idxSex)), ...
+        ".mat"); %Selectionne juste F ou M
+
+    filenamesFull = string({nf_extrusions.name});
+
+    keep = false(size(filenamesFull));
+
+    for k = 1:length(selectedNames)
+        keep = keep | contains( ...
+            filenamesFull, ...
+            selectedNames(k));
+    end
+
+    %% Keep only selected files
+
+    nf_extrusions_sex = nf_extrusions(keep);
+    nf_divisions_sex  = nf_divisions(keep);
+    nf_masks_sex      = nf_masks(keep);
+    nf_piv_sex        = [];
+    nf_features_sex   = nf_features(keep);
+
+    filenames = {nf_extrusions_sex.name};
+
+    %% Time table
+
+    timeTable = buildTimeTable( ...
+        timeDataframe(idxSex,:), ...
+        selectedColumn);
+
+    %% Save file specific to the sex
+
+    matFile = fullfile(filepath,'dataframes', ...
+        sprintf('data_%s_%sAlignment_transformed.mat', ...
+        currentSex, selectedLandmarks));
+
+    %% Preprocessing
+
+    if ~exist(matFile,'file')
+
+        [data,Rglobal] = runPreprocessing( ...
+            filepath,...
+            nf_extrusions_sex,...
+            nf_divisions_sex,...
+            nf_masks_sex,...
+            nf_piv_sex,...
+            nf_features_sex,...
+            nf_landmarks(keep),...
+            timeTable,...
+            frameRate,...
+            selectedLandmarks);
+
+        fprintf('\nEXTRUSIONS\n');
+        disp(size(data.extrusions_transformed))
+        disp(data.extrusions_transformed(1:5,:))
+
+        fprintf('\nDIVISIONS\n');
+        disp(size(data.divisions_transformed))
+        disp(data.divisions_transformed(1:5,:))
+
+        save(matFile,'data','Rglobal','-v7.3');
+
+    else
+
+        load(matFile);
+
+    end
+
+    %% Heatmaps
+
+    [allData,summary,params] = getHeatmapData( ...
+        filepath,...
+        filenames,...
+        [selectedLandmarks '_' currentSex ],... %Nom pour caractériser les fichiers etc...
+        data,...
+        Rglobal, currentSex);
+
+    %% Extrusions
+
+    getRegionalHeatmap( ...
+        filepath,...
+        filenames,...
+        [selectedLandmarks '_' currentSex],...
+        data.extrusions_transformed,...
+        allData,...
+        Rglobal,...
+        summary,...
+        params,...
+        'extrusions')
+
+    %% Divisions
+
+    getRegionalHeatmap( ...
+        filepath,...
+        filenames,...
+        [selectedLandmarks '_' currentSex],...
+        data.divisions_transformed,...
+        allData,...
+        Rglobal,...
+        summary,...
+        params,...
+        'divisions')
+
 end
-
-[allData,summary,params]=getHeatmapData(filepath, filenames,selectedLandmarks, data,Rglobal);
-
-% getSumAverageCVHeatmap(filepath,selectedLandmarks,extrusions_transformed,data,params);
-getRegionalHeatmap(filepath,filenames,selectedLandmarks,data.extrusions_transformed,allData,Rglobal,summary,params);
-

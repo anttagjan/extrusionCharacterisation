@@ -1,5 +1,5 @@
 function summary = aggregateHeatmaps(allData)
-
+fprintf("Calculating...")
 [nM, nT] = size(allData);
 
 initialized = false;
@@ -20,8 +20,9 @@ sumOriY = [];
 % LOOP OVER DATA
 %% =========================================================
 
-for i = 1:nM
-    for j = 1:nT
+for i = 1:nM %Movie
+    movieCells = [];
+    for j = 1:nT %Time
 
         d = allData{i,j};
         if isempty(d)
@@ -46,10 +47,14 @@ for i = 1:nM
 
             initialized = true;
         end
-
+        if isempty(movieCells)
+           movieCells = zeros(nBins);
+        end
         % --- load data ---
         c  = d.cells.count;            c(isnan(c)) = 0;
         a  = d.cells.areaSum;          a(isnan(a)) = 0;
+
+        movieCells = movieCells + c; %additionne à chaque temps les cellules (add each time bin, cells)
 
         ec = d.cells.eccentricityMean; ec(isnan(ec)) = 0;
         ar = d.cells.aspectRatioMean;  ar(isnan(ar)) = 0;
@@ -89,6 +94,7 @@ for i = 1:nM
         sumOriY(valid) = sumOriY(valid) + c(valid) .* sin(oriRad);
 
     end
+    cellScare(:,:,i) = movieCells;
 end
 
 %% =========================================================
@@ -133,5 +139,13 @@ summary.meanAspectRatio(sumCells == 0) = NaN;
 %% =========================================================
 
 summary.meanOrientation = abs(rad2deg(0.5 * atan2(sumOriY, sumOriX)));
+
+%% =========================================================
+% Average for each scare
+%% =========================================================
+
+summary.cellAverage = mean(cellScare,3); % Matrice en dimension 3. x et y: projection 2D, z: chaque film
+summary.deviation = std(cellScare,0,3);
+summary.coefVar  = summary.deviation ./ summary.cellAverage; % Divide each element
 
 end
