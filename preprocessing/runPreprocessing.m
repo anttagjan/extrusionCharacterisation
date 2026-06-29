@@ -1,4 +1,4 @@
-function [data,Rglobal] = runPreprocessing(filepath, nf_extrusion,nf_division, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate,alignMethod)
+function [rawData,Rglobal] = runPreprocessing(filepath, nf_extrusion,nf_division, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, frameRate,alignMethod)
 
 [landmarks] = loadLandmarks(filepath,alignMethod, nf_landmarks);
 
@@ -13,7 +13,6 @@ disp(unique(landmarks(:,3)))
 disp('Number of masks:')
 disp(length(masks))
 % [piv] = loadPIVcoords(filepath, nf_piv);
-[piv] = [];
 
 nMovies = length(nf_extrusion);
 
@@ -26,37 +25,26 @@ masks_transformed = cell(1,nMovies);
 masks_relativeTime = cell(1,nMovies);
 piv_relativeTime = [];
 
-%% Global reference
+%% Procrustes transformation + Build global canvas
 % averaging landmark positions and picking as a reference the most central movie in dataset
-<<<<<<< Updated upstream
-meanShape = buildMeanMovieShape(landmarks);
-refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie / alignement movies with landmarks
-
-movieIDs = unique(landmarks(:,3));
-=======
-if ~exist(fullfile(filepath,'meanShape_procrustes.mat'),'file')
+if ~exist(fullfile(filepath,'procrustes_model.mat'),'file')
     meanShape = buildMeanMovieShape(landmarks);
 
     refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie
     movieIDs = unique(landmarks(:,3));
->>>>>>> Stashed changes
 
     Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
     refMovie = landmarks(landmarks(:,3)==refMovieID,1:2);
-    save(fullfile(filepath,'meanShape_procrustes.mat'), ...
+    save(fullfile(filepath,'procrustes_model.mat'), ...
         'meanShape','refMovieID','refMovie', 'Rglobal');
 else
-    load(fullfile(filepath,'meanShape_procrustes.mat'), ...
+    load(fullfile(filepath,'procrustes_model.mat'), ...
         'meanShape','refMovieID','refMovie', 'Rglobal');
 end
 
 for i = 1:nMovies
 
-<<<<<<< Updated upstream
-    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovieID, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal); %Transformation, rotation etc....Procrustes analysis
-=======
-    [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovie, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal);
->>>>>>> Stashed changes
+    [Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr,timeMask,timePIV] = transformMovie(i, refMovie, landmarks, coordinates, division,masks, piv,features, timeTable, frameRate, Rglobal);
 
     extrusions_transformed = [extrusions_transformed; Ext, i*ones(size(Ext,1),1)];
     divisions_transformed = [divisions_transformed; Dv, i*ones(size(Dv,1),1)];
@@ -69,17 +57,17 @@ for i = 1:nMovies
     % piv_relativeTime = [piv_relativeTime; timePIV];
 end
 
-data.extrusions_transformed = extrusions_transformed;
-data.divisions_transformed = divisions_transformed;
-data.landmarks_transformed = landmarks_transformed;
-data.features_transformed = features_transformed;
-data.masks_transformed = masks_transformed;
-data.masks_relativeTime = masks_relativeTime;
+rawData.extrusions_transformed = extrusions_transformed;
+rawData.divisions_transformed = divisions_transformed;
+rawData.landmarks_transformed = landmarks_transformed;
+rawData.features_transformed = features_transformed;
+rawData.masks_transformed = masks_transformed;
+rawData.masks_relativeTime = masks_relativeTime;
 % data.piv_transformed = piv_transformed;
 % data.piv_relativeTime = piv_relativeTime;
 
-data.refMovieID = refMovieID;
-data.meanShape = meanShape;
-data.Rglobal = Rglobal;
+rawData.refMovieID = refMovieID;
+rawData.meanShape = meanShape;
+rawData.Rglobal = Rglobal;
 
 end

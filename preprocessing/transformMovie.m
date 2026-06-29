@@ -1,7 +1,7 @@
-function [Tr, Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr, timeMask,timePIV] = transformMovie( ...
+function [Ext,Dv, LM_tr, feat_tr, mask_tr,piv_tr, timeMask,timePIV] = transformMovie( ...
     i,  refMovie,landmarks, coordinates,division, masks,piv, dataframeFeatures, timeTable, frameRate, Rglobal)
 
-%% --- Procrustes alignment ---
+%% --- Procrustes transformation ---
 mov = landmarks(landmarks(:,3)==i,1:2);
 
 [~,~,Tr] = procrustes(refMovie,mov, ...
@@ -15,7 +15,7 @@ Afull = [A, [0;0]; t, 1];
 tform = affine2d(Afull);
 
 timeFactor = frameRate / 60;
-shift = [Rglobal.XWorldLimits(1), Rglobal.YWorldLimits(1)];
+shift = [Rglobal.XWorldLimits(1), Rglobal.YWorldLimits(1)]; % shift respect global canvas
 
 %% --- Transform extrusions ---
 coord_i = coordinates(coordinates(:,3) == i,:);
@@ -105,8 +105,7 @@ timeMask = ((1:T) - timeTable.peaks(i)) * timeFactor;
 timePIV=[];
 piv_tr=[];
 
-
-
+% Align transformation respect global canvas
 Ext(:,1:2) = Ext(:,1:2) - shift;
 Dv(:,1:2)  = Dv(:,1:2)  - shift;
 LM_tr  = LM_tr  - shift;

@@ -1,6 +1,6 @@
-function summary = aggregateHeatmaps(allData)
+function summary = aggregateBinnedData(binnedData)
 fprintf("Calculating...")
-[nM, nT] = size(allData);
+[nM, nT] = size(binnedData);
 
 initialized = false;
 
@@ -24,7 +24,7 @@ for i = 1:nM %Movie
     movieCells = [];
     for j = 1:nT %Time
 
-        d = allData{i,j};
+        d = binnedData{i,j};
         if isempty(d)
             continue
         end
