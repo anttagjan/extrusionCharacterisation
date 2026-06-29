@@ -1,4 +1,4 @@
-function [diffData,allShiftedDiffData,meanData,sdData,meanRandData,sdRandData,faIndex,faIndexRand]=getDiffExtrusions()
+function [diffData,allShiftedDiffData,meanData,sdData,meanRandData,sdRandData,faIndex,faIndexRand,AsymIndex]=getLeftRightAsymmetry()
     % randomShiftExcel: Importa un Excel, verifica que tenga hojas pares
     % y aplica un desplazamiento aleatorio (random shift) entre cada par de hojas.
 
@@ -80,4 +80,6 @@ function [diffData,allShiftedDiffData,meanData,sdData,meanRandData,sdRandData,fa
     meanData = mean(diffData(:,2:end),2,'omitnan');
     sdData = std(diffData(:,2:end),0,2,'omitnan');
     faIndex = sdData.^2;
+    meanAsymRandData = cell2mat(cellfun(@(x) mean(x(:,2:end).^2,2,'omitnan'), allShiftedDiffData, 'UniformOutput', false));
+    AsymIndex = (mean(diffData(:,2:end).^2,2,'omitnan')-mean(meanAsymRandData,2))./std(meanAsymRandData,0,2);
 end
