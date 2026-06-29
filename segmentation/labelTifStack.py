@@ -14,7 +14,7 @@ import trackpy as tp
 from tqdm import tqdm
 import os
 
-filepath = 'D:/Antonio/epyseg/ecadGFP'
+filepath = 'D:/Antonio/epyseg/ecadGFP/raw'
 #filepath = 'D:\Antonio\caspase dynamics\datasets\kd 5 inx2 v2_normalised\input'
 # Folder for outputs
 os.makedirs(f"{filepath}/labeled", exist_ok=True)
@@ -43,7 +43,15 @@ sorted_files = sorted(files)
 #%% Loop through files
 for file in sorted_files:
 
+    df_filename = os.path.basename(file).replace('.tif','')
+    csv_file = f"{filepath}/dataframes/{df_filename}.csv"
+
+    if os.path.isfile(csv_file):
+        print(f"Skipping {file} (CSV already exists)")
+        continue
+
     print("Processing:", file)
+    
     stack = ski_io.imread(file)  # 3D TIFF (time, y, x)
     
     labeled_stack = []

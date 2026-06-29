@@ -20,20 +20,7 @@ sexList = {'F','M'};
 
 for iSex = 1:length(sexList) %Pour males & Femelles
 
-<<<<<<< Updated upstream
     currentSex = sexList{iSex};
-=======
-if ~exist(dataFile,'file')
-    [allData,summary,spatialGrids]=getHeatmapData(filenames,data,Rglobal,params);
-    save(dataFile, 'summary','allData','params','spatialGrids','-v7.3');
-else
-    load(dataFile);
-    plotExtrusions( ...
-    filenames, ...
-    data.extrusions_transformed, ...
-    data.landmarks_transformed);
-end
->>>>>>> Stashed changes
 
     fprintf('\n=====================\n');
     fprintf('Processing %s\n', currentSex);
@@ -112,7 +99,16 @@ end
     end
 
     %% Heatmaps
-
+    if ~exist(dataFile,'file')
+        [allData,summary,spatialGrids]=getHeatmapData(filenames,data,Rglobal,params);
+        save(dataFile, 'summary','allData','params','spatialGrids','-v7.3');
+    else
+        load(dataFile);
+        plotExtrusions( ...
+            filenames, ...
+            data.extrusions_transformed, ...
+            data.landmarks_transformed);
+    end
     [allData,summary,params] = getHeatmapData( ...
         filepath,...
         filenames,...
