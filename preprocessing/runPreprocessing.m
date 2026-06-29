@@ -21,6 +21,7 @@ divisions_transformed = [];
 landmarks_transformed = [];
 features_transformed = [];
 piv_transformed = [];
+piv=[];
 masks_transformed = cell(1,nMovies);
 masks_relativeTime = cell(1,nMovies);
 piv_relativeTime = [];

@@ -1,4 +1,4 @@
-function [binnedData,summary,params]=runSpatioTemporalEventPipeline(filepath, filenames,params, data,sex_icon)
+function [binnedData,summary,params]=runSpatioTemporalEventPipeline(filepath, params, data,spatialGrid)
 
 extrusions_transformed= data.extrusions_transformed;
 divisions_transformed= data.divisions_transformed; 
@@ -21,10 +21,6 @@ binnedData = processAllMovies( ...
 %% Summary
 
 summary = aggregateBinnedData(binnedData);
-
-save(fullfile(filepath,'dataframes', ...
-    strcat('STdata_',alignMethod,'_',num2str(params.timeStep),'h_timeStep.mat')), ...
-    'summary','binnedData','spatialGrid','params');
 
 %% Valid Bin Mask
 

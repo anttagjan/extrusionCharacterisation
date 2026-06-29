@@ -28,7 +28,7 @@ timeTable = buildTimeTable(timeDataframe, selectedColumn);
 
 %% Preprocessing 
 matFile = fullfile(filepath,'dataframes', ...
-    sprintf('data_%sAlignment_transformed.mat', selectedLandmarks));
+    sprintf('rawData_%sAlignment.mat', selectedLandmarks));
 
 if ~exist(matFile,'file')
     [rawData,Rglobal] = runPreprocessing(filepath, nf_extrusions,nf_divisions, nf_masks,nf_piv, nf_features, nf_landmarks, timeTable, params.frameRate, selectedLandmarks);
@@ -38,6 +38,9 @@ else
 end
 
 %% Spatio-temporal binning pipeline
+dataFile = fullfile(filepath, 'dataframes', ...
+    sprintf('binnedData_%sAlignment_%dSpatialBins_%ghTimeStep.mat', selectedLandmarks,params.nBins, params.timeStep));
+
 if ~exist(dataFile,'file')
 
     % Spatial grid
@@ -56,12 +59,11 @@ if ~exist(dataFile,'file')
     % run spatio-temporal binning
     [binnedData,summary] = runSpatioTemporalEventPipeline( ...
         filepath,...
-        filenames,...
         params,...
         rawData,...
-        Rglobal);
+        spatialGrid);
 
-    save(dataFile, 'summary','binnedData','params','spatialGrids','-v7.3');
+    save(dataFile, 'summary','binnedData','params','spatialGrid','-v7.3');
 else
     load(dataFile);
 end
