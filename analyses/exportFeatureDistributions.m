@@ -96,26 +96,20 @@ for z = 1:nZones
             if nCells > 0
 
                 % ----------------------------
-                % AREA
-                % ----------------------------
-                allArea = aZ(cZ > 0);
-                meanArea(t,k) = nansum(aZ(:)) / nCells;
-                if ~isempty(allArea)
-                    cvArea(t,k) = std(allArea) / mean(allArea);
-                else
-                    cvArea(t,k) = NaN;
-                end
-
-                % ----------------------------
                 % STACK FEATURES
                 % ----------------------------
 
+                areaValues = [];
                 eccValues = [];
                 oriValues = [];
 
                 validBins = find(~isnan(zoneMask) & c>0);
 
                 for idx = validBins'
+
+                    if ~isempty(d.cells.area{idx})
+                        areaValues = [areaValues; d.cells.area{idx}(:)];
+                    end
 
                     if ~isempty(d.cells.eccentricity{idx})
                         eccValues = [eccValues; d.cells.eccentricity{idx}(:)];
@@ -125,6 +119,17 @@ for z = 1:nZones
                         oriValues = [oriValues; d.cells.orientation{idx}(:)];
                     end
 
+                end
+
+                % ----------------------------
+                % AREA
+                % ----------------------------
+                if ~isempty(areaValues)
+                    meanArea(t,k) = mean(areaValues);
+                    cvArea(t,k)   = std(areaValues) / mean(areaValues);
+                else
+                    meanArea(t,k) = NaN;
+                    cvArea(t,k)   = NaN;
                 end
 
                 % ----------------------------
@@ -160,17 +165,16 @@ for z = 1:nZones
     % =====================================================
     % EXPORT
     % =====================================================
+    featureStruct.meanCells   = meanCells;
+    featureStruct.totalCells  = totalCells;
+    featureStruct.meanArea    = meanArea;
+    featureStruct.meanEcc     = meanEcc;
+    featureStruct.cvEcc       = cvEcc;
+    featureStruct.meanOri     = meanOri;
+    featureStruct.cvOri       = cvOri;
+    featureStruct.cvArea      = cvArea;
 
-    writeFeatureSheets( ...
-        excelRaw,...
-        zoneNames{z},...
-        meanCells,...
-        totalCells,...
-        meanArea,...
-        meanEcc,...
-        meanOri,...
-        filenamesSex,...
-        timeBins);
+    writeFeatureSheets(excelRaw, zoneNames{z}, filenames, timeBins, featureStruct);
 
     fprintf('[INFO] Zone %s exported\n', ...
         zoneNames{z});

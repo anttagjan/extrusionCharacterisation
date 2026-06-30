@@ -1,63 +1,39 @@
-function writeFeatureSheets(excelFile, zoneName, ...
-    meanCells,totalCells, meanArea, ecc, ori, filenames, timeBins)
+function writeFeatureSheets(excelFile, zoneName, filenames, timeBins, featureStruct)
 
-% =========================
-% CELL NUMBER
-% =========================
+fields = fieldnames(featureStruct);
 
-T = array2table(meanCells, 'VariableNames', filenames);
-T.Time = timeBins(:);
-T = movevars(T,'Time','Before',1);
+for f = 1:numel(fields)
 
-writetable(T, excelFile, ...
-    'Sheet', strcat(zoneName,'_AverageCells'), ...
-    'WriteMode','overwritesheet');
+    data = featureStruct.(fields{f});
 
-% =========================
-% TOTAL CELLS
-% =========================
+    % skip empty
+    if isempty(data)
+        continue
+    end
 
-T = array2table(totalCells, 'VariableNames', filenames);
-T.Time = timeBins(:);
-T = movevars(T,'Time','Before',1);
+    % -------------------------
+    % BUILD TABLE
+    % -------------------------
+    nCols = size(data,2);
 
-writetable(T, excelFile, ...
-    'Sheet', strcat(zoneName,'_TotalCells'), ...
-    'WriteMode','overwritesheet');
-% =========================
-% MEAN AREA
-% =========================
+    % fix mismatch safely
+    if length(filenames) ~= nCols
+        filenames = filenames(1:nCols);
+    end
 
-T = array2table(meanArea, 'VariableNames', filenames);
-T.Time = timeBins(:);
-T = movevars(T,'Time','Before',1);
+    T = array2table(data, 'VariableNames', filenames);
+    T.Time = timeBins(:);
+    T = movevars(T,'Time','Before',1);
 
-writetable(T, excelFile, ...
-    'Sheet', strcat(zoneName,'_MeanArea'), ...
-    'WriteMode','overwritesheet');
+    % -------------------------
+    % WRITE SHEET
+    % -------------------------
+    sheetName = strcat(zoneName,'_',fields{f});
 
-% =========================
-% ECCENTRICITY
-% =========================
+    writetable(T, excelFile, ...
+        'Sheet', sheetName, ...
+        'WriteMode','overwritesheet');
 
-T = array2table(ecc, 'VariableNames', filenames);
-T.Time = timeBins(:);
-T = movevars(T,'Time','Before',1);
-
-writetable(T, excelFile, ...
-    'Sheet', strcat(zoneName,'_Eccentricity'), ...
-    'WriteMode','overwritesheet');
-
-% =========================
-% ORIENTATION
-% =========================
-
-T = array2table(ori, 'VariableNames', filenames);
-T.Time = timeBins(:);
-T = movevars(T,'Time','Before',1);
-
-writetable(T, excelFile, ...
-    'Sheet', strcat(zoneName,'_Orientation'), ...
-    'WriteMode','overwritesheet');
+end
 
 end
