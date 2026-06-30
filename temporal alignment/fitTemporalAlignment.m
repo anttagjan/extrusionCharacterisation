@@ -142,6 +142,9 @@ for ii = 1:length(results)
                 t1_auto = max(1, peak - win);
                 t2_auto = min(length(t), peak + win);
 
+                % New fit replaces previous one
+                prev = [];
+
                 figure(2); clf; hold on; box on;
 
                 plot(t, results(ii).raw,'k');

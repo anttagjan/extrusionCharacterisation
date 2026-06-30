@@ -1,8 +1,8 @@
-function results = loadDivisionData(filepath,span)
+function results = loadDivisionFreqData(filepath,span)
 
 xlsx_file = dir(fullfile(filepath,'*cell_division.xlsx'));
 
-data = readtable(xlsx_file.name,'VariableNamingRule','preserve');
+data = readtable(fullfile(xlsx_file.folder,xlsx_file.name),'VariableNamingRule','preserve');
 
 names = data.Properties.VariableNames;
 
