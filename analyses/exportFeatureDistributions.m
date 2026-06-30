@@ -1,10 +1,19 @@
-function exportFeatureDistributions(filepath, filenames,featuresFileName, allData, selectedBins, timeBins)
+function exportFeatureDistributions( ...
+    filepath,...
+    filenames,...
+    featuresFileName,...
+    allData,...
+    selectedBins,...
+    timeBins,...
+    keepMovies)
 
-nMovies = size(allData,1);
+selectedMovies = find(keepMovies);
+
+nMovies = length(selectedMovies);
 nT      = size(allData,2);
 
 % =========================================================
-% ADD GLOBAL ZONE (ALL SPACE)
+% ADD GLOBAL ZONE
 % =========================================================
 
 allMask = true(size(selectedBins(:,:,1)));
@@ -14,6 +23,8 @@ zoneNames = {'Midline','Posterior','Up','Down','All'};
 nZones = size(selectedBins,3);
 
 excelRaw = fullfile(filepath,"dataframes",featuresFileName);
+
+filenamesSex = filenames(selectedMovies);
 
 % =========================================================
 % LOOP ZONES
@@ -28,22 +39,30 @@ for z = 1:nZones
     % OUTPUT MATRICES
     % =====================================================
 
-    meanCells  = NaN(length(timeBins), nMovies);
-    meanArea   = NaN(length(timeBins), nMovies);
+    meanCells = NaN(length(timeBins), nMovies);
+    totalCells = NaN(length(timeBins), nMovies);
 
-    meanEcc = NaN(length(timeBins), nMovies);
-    meanOri = NaN(length(timeBins), nMovies);
+    meanArea = NaN(length(timeBins), nMovies);
+    meanEcc  = NaN(length(timeBins), nMovies);
+    meanOri  = NaN(length(timeBins), nMovies);
 
     % =====================================================
-    % LOOP DATA
+    % LOOP MOVIES
     % =====================================================
 
-    for m = 1:nMovies
+    for k = 1:nMovies
+
+        m = selectedMovies(k);
+
         for t = 1:nT
 
             d = allData{m,t};
 
-            if isempty(d) || ~isfield(d,'cells') || ~isfield(d,'tissue')
+            if isempty(d)
+                continue
+            end
+
+            if ~isfield(d,'cells') || ~isfield(d,'tissue')
                 continue
             end
 
@@ -75,34 +94,37 @@ for z = 1:nZones
             % APPLY MASK
             % ----------------------------
 
-            cZ = c .* zoneMask;
-            aZ = a .* zoneMask;
+            cZ  = c  .* zoneMask;
+            aZ  = a  .* zoneMask;
             ecZ = ec .* zoneMask;
             orZ = or .* zoneMask;
 
             % =================================================
-            % BASIC METRICS
+            % CELL NUMBER
             % =================================================
 
-            meanCells(t,m)  = mean(cZ(cZ>0),'omitnan');
+            meanCells(t,k) = mean(cZ(cZ>0),'omitnan');
 
             nCells = nansum(cZ(:));
-            totalCells(t,m) = nCells;
+            totalCells(t,k) = nCells;
 
             if nCells > 0
 
                 % ----------------------------
-                % AREA PER CELL
+                % AREA
                 % ----------------------------
-                meanArea(t,m) = nansum(aZ(:)) / nCells;
+
+                meanArea(t,k) = nansum(aZ(:)) / nCells;
 
                 % ----------------------------
-                % ECCENTRICITY (cell-weighted)
+                % ECCENTRICITY
                 % ----------------------------
-                meanEcc(t,m) = nansum(ecZ(:) .* cZ(:)) / nCells;
+
+                meanEcc(t,k) = ...
+                    nansum(ecZ(:).*cZ(:)) / nCells;
 
                 % ----------------------------
-                % ORIENTATION (CIRCULAR [-90,90])
+                % ORIENTATION
                 % ----------------------------
 
                 valid = cZ(:) > 0;
@@ -110,17 +132,26 @@ for z = 1:nZones
                 if any(valid)
 
                     weights = cZ(valid);
-                    angles  = deg2rad(orZ(valid) * 2);
 
-                    x = nansum(weights .* cos(angles));
-                    y = nansum(weights .* sin(angles));
+                    angles = deg2rad( ...
+                        orZ(valid) * 2);
 
-                    meanOri(t,m) = abs(rad2deg(0.5 * atan2(y, x)));
+                    x = nansum( ...
+                        weights .* cos(angles));
+
+                    y = nansum( ...
+                        weights .* sin(angles));
+
+                    meanOri(t,k) = ...
+                        abs(rad2deg( ...
+                        0.5 * atan2(y,x)));
 
                 end
+
             end
 
         end
+
     end
 
     % =====================================================
@@ -128,17 +159,18 @@ for z = 1:nZones
     % =====================================================
 
     writeFeatureSheets( ...
-        excelRaw, ...
-        zoneNames{z}, ...
-        meanCells, ...
-        totalCells, ...
-        meanArea, ...
-        meanEcc, ...
-        meanOri, ...
-        filenames, ...
+        excelRaw,...
+        zoneNames{z},...
+        meanCells,...
+        totalCells,...
+        meanArea,...
+        meanEcc,...
+        meanOri,...
+        filenamesSex,...
         timeBins);
 
-    fprintf('[INFO] Zone %s exported\n', zoneNames{z});
+    fprintf('[INFO] Zone %s exported\n', ...
+        zoneNames{z});
 
 end
 
