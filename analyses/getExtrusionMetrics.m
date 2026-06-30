@@ -1,4 +1,4 @@
-function extrusions = getExtrusionMetrics(x,y,tissue,grid)
+function extrusions = getExtrusionMetrics(x,y,cells,grid)
 
 ix = discretize(x, grid.xEdges);
 iy = discretize(y, grid.yEdges);
@@ -16,10 +16,10 @@ else
     extrusions.count = accumarray([iy ix], 1, [nBins nBins], @sum, 0);
 end
 
-extrusions.density = extrusions.count ./ tissue.area;
-extrusions.density(tissue.area==0) = NaN;
+extrusions.rate = extrusions.count ./ cells.count;
+extrusions.rate(cells.count==0) = NaN;
 
 extrusions.count(~tissue.validBinMask) = NaN;
-extrusions.density(~tissue.validBinMask) = NaN;
+extrusions.rate(~tissue.validBinMask) = NaN;
 
 end
