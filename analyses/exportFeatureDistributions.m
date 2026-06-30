@@ -46,6 +46,10 @@ for z = 1:nZones
     meanEcc  = NaN(length(timeBins), nMovies);
     meanOri  = NaN(length(timeBins), nMovies);
 
+    cvArea = NaN(length(timeBins), nMovies);
+    cvEcc  = NaN(length(timeBins), nMovies);
+    cvOri  = NaN(length(timeBins), nMovies);
+
     % =====================================================
     % LOOP MOVIES
     % =====================================================
@@ -168,13 +172,14 @@ for z = 1:nZones
     featureStruct.meanCells   = meanCells;
     featureStruct.totalCells  = totalCells;
     featureStruct.meanArea    = meanArea;
+    featureStruct.cvArea      = cvArea;
     featureStruct.meanEcc     = meanEcc;
     featureStruct.cvEcc       = cvEcc;
     featureStruct.meanOri     = meanOri;
     featureStruct.cvOri       = cvOri;
-    featureStruct.cvArea      = cvArea;
 
-    writeFeatureSheets(excelRaw, zoneNames{z}, filenames, timeBins, featureStruct);
+
+    writeFeatureSheets(excelRaw, zoneNames{z}, filenamesSex, timeBins, featureStruct);
 
     fprintf('[INFO] Zone %s exported\n', ...
         zoneNames{z});
