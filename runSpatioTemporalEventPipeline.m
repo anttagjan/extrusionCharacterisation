@@ -1,11 +1,10 @@
-function [binnedData,summary,params]=runSpatioTemporalEventPipeline(filepath, params, data,spatialGrid)
+function [binnedData,summary,params]=runSpatioTemporalEventPipeline(params, rawData,spatialGrid)
 
-extrusions_transformed= data.extrusions_transformed;
-divisions_transformed= data.divisions_transformed; 
-landmarks_transformed=data.landmarks_transformed;
-masks_transformed=data.masks_transformed;
-masks_relativeTime = data.masks_relativeTime;
-features_transformed=data.features_transformed;
+extrusions_transformed= rawData.extrusions_transformed;
+divisions_transformed= rawData.divisions_transformed; 
+masks_transformed=rawData.masks_transformed;
+masks_relativeTime = rawData.masks_relativeTime;
+features_transformed=rawData.features_transformed;
 
 %% Processing (Spatio Temporal discretisation)
 
@@ -20,7 +19,7 @@ binnedData = processAllMovies( ...
 
 %% Summary
 
-summary = aggregateBinnedData(binnedData);
+summary = aggregateSpatialData(binnedData);
 
 %% Valid Bin Mask
 

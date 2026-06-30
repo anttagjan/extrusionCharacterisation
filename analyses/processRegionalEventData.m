@@ -3,14 +3,13 @@ function processRegionalEventData( ...
         filenames,...
         selectedLandmarksAndSex,...
         events_transformed,...
-        allData,...
+        binnedData,...
         Rglobal,...
         summary,...
         params,...
         eventName,...
         keepMovies, ...
         selectedLandmarks)
-
 
 persistent one_time_execution %Variable pour executer une seule fois
 if isempty(one_time_execution)
@@ -24,12 +23,12 @@ else
     heatmapSum = summary.totalDiv;
 end
 
-eventDist = cell(size(allData));
+eventDist = cell(size(binnedData));
 
-for i = 1:size(allData,1)
-    for j = 1:size(allData,2)
+for i = 1:size(binnedData,1)
+    for j = 1:size(binnedData,2)
 
-        d = allData{i,j};
+        d = binnedData{i,j};
 
         if isempty(d)
             continue
@@ -59,9 +58,6 @@ globalMax = prctile(heatmapSum(:), 100);
 
 zoneNames = {'Midline', 'Posterior', 'Up', 'Down'};
 zoneColors = [0 0 1; 1 0.5 0; 0 1 0; 1 1 0]; % blue, orange, green, yellow
-
-time = round(events_transformed(:,3),4);
-timeBins = floor(min(time)):timeStep:ceil(max(time));
 
 spatialGrid.nBins = params.nBins;
 
@@ -188,13 +184,13 @@ nZones = size(selectedBins,3);
 for zone = 1:nZones
     zoneMask = selectedBins(:,:,zone);
     zoneMask(always_nan_mask==1)=0;
-    countsPerMovie = zeros(length(timeBins), max(movies));
-    normCountsPerMovie = zeros(length(timeBins), max(movies));
+    countsPerMovie = zeros(length(params.timeBins), max(movies));
+    normCountsPerMovie = zeros(length(params.timeBins), max(movies));
     if sum(sum(zoneMask))==0
         continue
     end
 
-    for nTime = 1:length(timeBins)
+    for nTime = 1:length(params.timeBins)
         count = 0;
         normCount= 0;
         for k = 1:length(movieIDs)
@@ -230,7 +226,7 @@ for zone = 1:nZones
     T = array2table( ...
         countsPerMovie(:,keepMovies), ...
         'VariableNames', filenamesSex);
-    T.Time = round(timeBins(:), 4);
+    T.Time = round(params.timeBins(:), 4);
     T = movevars(T, 'Time', 'Before', 1);
     sheetName = zoneNames{zone};
     writetable(T, fullfile(filepath,"dataframes",excelFileName), 'Sheet', sheetName, 'WriteMode', 'overwritesheet');
@@ -240,7 +236,7 @@ for zone = 1:nZones
     T_normalised = array2table( ...
         normCountsPerMovie(:,keepMovies), ...
         'VariableNames', filenamesSex);
-    T_normalised.Time = round(timeBins(:), 4);
+    T_normalised.Time = round(params.timeBins(:), 4);
     T_normalised = movevars(T_normalised, 'Time', 'Before', 1);
     writetable(T_normalised, fullfile(filepath, "dataframes", excelFileNameNaN), ...
                'Sheet', sheetName, 'WriteMode', 'overwritesheet');
@@ -251,10 +247,10 @@ end
 allMask = true(nBins, nBins);
 allMask(always_nan_mask == 1) = 0;
 
-allCountsPerMovie     = NaN(length(timeBins), max(movies));
-allNormCountsPerMovie = NaN(length(timeBins), max(movies));
+allCountsPerMovie     = NaN(length(params.timeBins), max(movies));
+allNormCountsPerMovie = NaN(length(params.timeBins), max(movies));
 
-for nTime = 1:length(timeBins)
+for nTime = 1:length(params.timeBins)
     for k = 1:length(movieIDs)
 
         nMovie = movieIDs(k);
@@ -284,7 +280,7 @@ end
 Tall = array2table( ...
         allCountsPerMovie(:,keepMovies), ...
         'VariableNames', filenamesSex);
-Tall.Time = round(timeBins(:), 4);
+Tall.Time = round(params.timeBins(:), 4);
 Tall = movevars(Tall, 'Time', 'Before', 1);
 
 writetable(Tall, fullfile(filepath,"dataframes",excelFileName), ...
@@ -295,7 +291,7 @@ fprintf('[INFO] Sheet "All" exported.\n');
 TallNorm = array2table( ...
         allNormCountsPerMovie(:,keepMovies), ...
         'VariableNames', filenamesSex);
-TallNorm.Time = round(timeBins(:), 4);
+TallNorm.Time = round(params.timeBins(:), 4);
 TallNorm = movevars(TallNorm, 'Time', 'Before', 1);
 
 writetable(TallNorm, fullfile(filepath,"dataframes",excelFileNameNaN), ...
@@ -304,7 +300,7 @@ fprintf('[INFO] Sheet "All" exported to %s.\n', excelFileNameNaN);
 
 if strcmp(eventName,'extrusions') %Export once
     exportFeatureDistributions( ...
-        filepath, filenames,featuresFileName, allData, selectedBins, timeBins, keepMovies);
+        filepath, filenames,featuresFileName, binnedData, selectedBins, params.timeBins, keepMovies);
 end 
 
 end

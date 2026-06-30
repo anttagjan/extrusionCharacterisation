@@ -1,6 +1,6 @@
 
 %% Convertit coo, dans une matrice (colonne/lignes) + supp point hors image
-function divisions = getDivisionMetrics(x,y,cells,grid)
+function divisions = getDivisionMetrics(x,y,tissue,cells,grid)
 
 ix = discretize(x, grid.xEdges);
 iy = discretize(y, grid.yEdges);

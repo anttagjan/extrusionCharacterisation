@@ -1,4 +1,4 @@
-function extrusions = getExtrusionMetrics(x,y,cells,grid)
+function extrusions = getExtrusionMetrics(x,y,tissue,cells,grid)
 
 ix = discretize(x, grid.xEdges);
 iy = discretize(y, grid.yEdges);

@@ -2,7 +2,7 @@ function exportFeatureDistributions( ...
     filepath,...
     filenames,...
     featuresFileName,...
-    allData,...
+    binnedData,...
     selectedBins,...
     timeBins,...
     keepMovies)
@@ -10,7 +10,7 @@ function exportFeatureDistributions( ...
 selectedMovies = find(keepMovies);
 
 nMovies = length(selectedMovies);
-nT      = size(allData,2);
+nT      = size(binnedData,2);
 
 % =========================================================
 % ADD GLOBAL ZONE
@@ -56,13 +56,13 @@ for z = 1:nZones
 
         for t = 1:nT
 
-            d = allData{m,t};
+            d = binnedData{m,t};
 
             if isempty(d)
                 continue
             end
 
-            if ~isfield(d,'cells') || ~isfield(d,'tissue')
+            if ~isfield(d,'cells')
                 continue
             end
 
@@ -73,22 +73,9 @@ for z = 1:nZones
             c  = d.cells.count;
             a  = d.cells.areaSum;
 
-            ec = d.cells.eccentricityMean;
-            or = d.cells.orientationMean;
-
-            tissue = d.tissue.area;
-
-            % ----------------------------
-            % CLEAN NaNs
-            % ----------------------------
-
             c(isnan(c)) = 0;
             a(isnan(a)) = 0;
 
-            ec(isnan(ec)) = 0;
-            or(isnan(or)) = 0;
-
-            tissue(isnan(tissue)) = 0;
 
             % ----------------------------
             % APPLY MASK
@@ -96,8 +83,6 @@ for z = 1:nZones
 
             cZ  = c  .* zoneMask;
             aZ  = a  .* zoneMask;
-            ecZ = ec .* zoneMask;
-            orZ = or .* zoneMask;
 
             % =================================================
             % CELL NUMBER
@@ -113,39 +98,57 @@ for z = 1:nZones
                 % ----------------------------
                 % AREA
                 % ----------------------------
-
+                allArea = aZ(cZ > 0);
                 meanArea(t,k) = nansum(aZ(:)) / nCells;
+                if ~isempty(allArea)
+                    cvArea(t,k) = std(allArea) / mean(allArea);
+                else
+                    cvArea(t,k) = NaN;
+                end
+
+                % ----------------------------
+                % STACK FEATURES
+                % ----------------------------
+
+                eccValues = [];
+                oriValues = [];
+
+                validBins = find(~isnan(zoneMask) & c>0);
+
+                for idx = validBins'
+
+                    if ~isempty(d.cells.eccentricity{idx})
+                        eccValues = [eccValues; d.cells.eccentricity{idx}(:)];
+                    end
+
+                    if ~isempty(d.cells.orientation{idx})
+                        oriValues = [oriValues; d.cells.orientation{idx}(:)];
+                    end
+
+                end
 
                 % ----------------------------
                 % ECCENTRICITY
                 % ----------------------------
 
-                meanEcc(t,k) = ...
-                    nansum(ecZ(:).*cZ(:)) / nCells;
+                if ~isempty(eccValues)
+                    meanEcc(t,k) = mean(eccValues);
+                    cvEcc(t,k)   = std(eccValues) / mean(eccValues);
+                else
+                    meanEcc(t,k) = NaN;
+                    cvEcc(t,k)   = NaN;
+                end
 
                 % ----------------------------
                 % ORIENTATION
                 % ----------------------------
 
-                valid = cZ(:) > 0;
-
-                if any(valid)
-
-                    weights = cZ(valid);
-
-                    angles = deg2rad( ...
-                        orZ(valid) * 2);
-
-                    x = nansum( ...
-                        weights .* cos(angles));
-
-                    y = nansum( ...
-                        weights .* sin(angles));
-
-                    meanOri(t,k) = ...
-                        abs(rad2deg( ...
-                        0.5 * atan2(y,x)));
-
+                if ~isempty(oriValues)
+                    meanOri(t,k) = mean(oriValues);
+                    cvOri(t,k)   = std(oriValues) / mean(oriValues);
+                else
+                    meanOri(t,k) = NaN;
+                    cvOri(t,k)   = NaN;
                 end
 
             end

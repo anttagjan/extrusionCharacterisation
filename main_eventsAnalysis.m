@@ -3,8 +3,8 @@ clear all
 
 %% Init
 fprintf("Initializing")
-%filepath = 'D:\Antonio\extrusion systematic characterisation\test';
-filepath = 'D:\Nathan';
+filepath = 'D:\Antonio\extrusion systematic characterisation\test';
+% filepath = 'D:\Nathan';
 params.nBins = 30;
 params.timeStep = 1;
 params.frameRate = 5;
@@ -58,7 +58,6 @@ if ~exist(dataFile,'file')
 
     % run spatio-temporal binning
     [binnedData,summary] = runSpatioTemporalEventPipeline( ...
-        filepath,...
         params,...
         rawData,...
         spatialGrid);
@@ -99,6 +98,8 @@ for iSex = 1:length(sexList) %Pour males & Femelles
     end
 
     %% Global and regional analyses
+    time = round(rawData.extrusions_transformed(:,3),4);
+    params.timeBins = floor(min(time)):params.timeStep:ceil(max(time));
 
     % Extrusions
 
@@ -163,7 +164,7 @@ plotEventsQualityControl( ...
 
 plotEvents( ...
     filenames, ...
-    rawData.extrusions_transformed, ...
+    rawData.divisions_transformed, ...
     rawData.landmarks_transformed);
 
 plotHeatmaps(summary, currentSex, filepath)
