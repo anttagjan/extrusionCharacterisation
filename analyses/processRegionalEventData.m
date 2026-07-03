@@ -11,11 +11,13 @@ function processRegionalEventData( ...
         keepMovies, ...
         selectedLandmarks)
 
+timeStep = params.timeStep;
+nBins = params.nBins;
+
 persistent one_time_execution %Variable pour executer une seule fois
 if isempty(one_time_execution)
     one_time_execution = "true";
 end
-
 
 if strcmp(eventName,'extrusions')
     heatmapSum = summary.totalExtr;
@@ -24,6 +26,8 @@ else
 end
 
 eventDist = cell(size(binnedData));
+validCoverage = zeros(nBins, nBins);
+nUsed = 0;
 
 for i = 1:size(binnedData,1)
     for j = 1:size(binnedData,2)
@@ -37,9 +41,15 @@ for i = 1:size(binnedData,1)
         if isfield(d,eventName)
             eventDist{i,j} = d.(eventName).count;
         end
+
+        if isfield(d.tissue,'validBinMask')
+            validCoverage = validCoverage + double(d.tissue.validBinMask);
+            nUsed = nUsed + 1;
+        end
     end
 end
 
+globalValidMask = validCoverage > (0.75 * nUsed); 
 totalEvents = sum(heatmapSum(:),'omitnan');
 
 fprintf('\n[INFO] Global number of %s: %d\n', ...
@@ -49,8 +59,6 @@ fprintf('\n[INFO] Global number of %s: %d\n', ...
 movies = unique(events_transformed(:,4));
 filenamesSex = filenames(keepMovies);
 movieIDs = find(keepMovies);
-timeStep = params.timeStep;
-nBins = params.nBins;
 
 nColors = 256;
 cmap = [linspace(1,1,nColors)', linspace(1,0,nColors)', linspace(1,0,nColors)'];
@@ -73,18 +81,43 @@ spatialGrid.yEdges = linspace( ...
 xCenters = (spatialGrid.xEdges (1:end-1) + spatialGrid.xEdges (2:end))/2;
 yCenters = (spatialGrid.yEdges (1:end-1) + spatialGrid.yEdges (2:end))/2;
 
-
 % Try loading previous selection
+persistent zoneSelectionDone selectedBinsCache zoneFileCache
+
+if isempty(zoneSelectionDone)
+    zoneSelectionDone = false;
+    selectedBinsCache = [];
+    zoneFileCache = "";
+end
 zoneFile = fullfile(filepath,"dataframes","selectedZones",strcat(selectedLandmarks,'_selected_zones.mat'));
 selectedBins = false(nBins, nBins, 4);
 useSavedZones = false;
-if exist(zoneFile, 'file')
+
+if zoneSelectionDone && ~isempty(selectedBinsCache) ...
+        && isequal(zoneFileCache, zoneFile)
+
+    selectedBins = selectedBinsCache;
+    useSavedZones = true;
+
+    fprintf('[INFO] Using cached zone selection (no reload)\n');
+
+elseif exist(zoneFile, 'file')
+
     userChoice = questdlg('Previously selected zones found. Load and skip selection?', ...
         'Load Saved Zones', 'Yes', 'No', 'Yes');
+
     if strcmp(userChoice, 'Yes')
+
         s = load(zoneFile, 'selectedBins', 'zoneNames');
+
         if isfield(s, 'selectedBins') && isequal(size(s.selectedBins), [nBins nBins 4])
             selectedBins = s.selectedBins;
+
+            % cache it for this session
+            selectedBinsCache = selectedBins;
+            zoneFileCache = zoneFile;
+            zoneSelectionDone = true;
+
             fprintf('[INFO] Loaded saved zone selection from selected_zones.mat\n');
             useSavedZones = true;
         else
@@ -94,53 +127,24 @@ if exist(zoneFile, 'file')
 end
 
 if ~useSavedZones
+
     % Launch interactive selection
     selectedBins = interactiveZoneSelector(heatmapSum, xCenters, yCenters, nBins, ...
         zoneNames, zoneColors);
    
     % Save to reuse later
     save(zoneFile, 'selectedBins', 'zoneNames');
+
+    % cache for session
+    selectedBinsCache = selectedBins;
+    zoneFileCache = zoneFile;
+    zoneSelectionDone = true;
+
     fprintf('[INFO] Saved zone selection to %s\n', zoneFile);
 end
-%%
-% Assume your data is called:
-% C: 15x57 cell array, each cell is a 30x30 double matrix
-
-% Step 1: Get size
-[rows, cols] = size(eventDist);
-
-always_nan_mask = true(nBins, nBins);
-
-for i = 1:rows
-    for j = 1:cols
-
-        current_matrix = eventDist{i,j};
-
-        if isempty(current_matrix)
-            continue
-        end
-
-        if ~isequal(size(current_matrix), [nBins nBins])
-            continue
-        end
-
-        always_nan_mask = ...
-            always_nan_mask & isnan(current_matrix);
-
-    end
-end
-
-% always_nan_mask is now 30x30, true at positions that are NaN in *all* 15x57 cells
-
-
 
 if one_time_execution == "true"
-    figure,
-    imagesc(always_nan_mask); axis image;colorbar; colormap gray;
-    title('Bins that are always NaN in all cells');
     one_time_execution = "false";
-
-
 elseif one_time_execution == "false" %% PARTIE A REVOIR: POUR QUE DIVISION CALCUL AUSSI POUR MALE
     one_time_execution = "test";
 elseif one_time_execution == "test"
@@ -161,15 +165,6 @@ excelFileName = strcat( ...
     selectedLandmarksAndSex, ...
     'Alignment_Summary.xlsx');
 
-excelFileNameNaN = strcat( ...
-    'HistogramNormalised', ...
-    eventLabel, '_', ...
-    num2str(nBins), 'x', num2str(nBins), '_', ...
-    num2str(round(timeStep,4)), 'hStep', ...
-    num2str(max(movies)), 'Movies_', ...
-    selectedLandmarksAndSex, ...
-    'Alignment_Summary.xlsx');
-
 featuresFileName = strcat( ...
     'Histogram_', ...
     'Features', '_', ...
@@ -183,16 +178,15 @@ nZones = size(selectedBins,3);
 
 for zone = 1:nZones
     zoneMask = selectedBins(:,:,zone);
-    zoneMask(always_nan_mask==1)=0;
+    zoneMask = zoneMask & globalValidMask;
     countsPerMovie = zeros(length(params.timeBins), max(movies));
-    normCountsPerMovie = zeros(length(params.timeBins), max(movies));
+
     if sum(sum(zoneMask))==0
         continue
     end
 
     for nTime = 1:length(params.timeBins)
-        count = 0;
-        normCount= 0;
+
         for k = 1:length(movieIDs)
 
             nMovie = movieIDs(k);
@@ -201,24 +195,17 @@ for zone = 1:nZones
             if ~isempty(histo)
 
                 validMask = zoneMask & ~isnan(histo);
-
                 nValidBins = sum(validMask(:));
-                nZoneBins  = sum(zoneMask(:));
 
                 if nValidBins > 0
                     count = sum(histo(validMask), 'omitnan');
                     countsPerMovie(nTime, nMovie) = count;
-
-                    fracValid = nValidBins / nZoneBins;
-                    normCountsPerMovie(nTime, nMovie) = count / fracValid;
                 else
                     countsPerMovie(nTime, nMovie) = NaN;
-                    normCountsPerMovie(nTime, nMovie) = NaN;
                 end
 
             else
                 countsPerMovie(nTime, nMovie) = NaN;
-                normCountsPerMovie(nTime, nMovie) = NaN;
             end
 
         end
@@ -232,23 +219,11 @@ for zone = 1:nZones
     writetable(T, fullfile(filepath,"dataframes",excelFileName), 'Sheet', sheetName, 'WriteMode', 'overwritesheet');
     fprintf('[INFO] Sheet "%s" exported.\n', sheetName);
 
-     % Save NaN counts table
-    T_normalised = array2table( ...
-        normCountsPerMovie(:,keepMovies), ...
-        'VariableNames', filenamesSex);
-    T_normalised.Time = round(params.timeBins(:), 4);
-    T_normalised = movevars(T_normalised, 'Time', 'Before', 1);
-    writetable(T_normalised, fullfile(filepath, "dataframes", excelFileNameNaN), ...
-               'Sheet', sheetName, 'WriteMode', 'overwritesheet');
-    fprintf('[INFO] Sheet "%s" exported to %s.\n', sheetName, excelFileNameNaN);
 end
 
 % === Add Global Sheet ===
 allMask = true(nBins, nBins);
-allMask(always_nan_mask == 1) = 0;
-
 allCountsPerMovie     = NaN(length(params.timeBins), max(movies));
-allNormCountsPerMovie = NaN(length(params.timeBins), max(movies));
 
 for nTime = 1:length(params.timeBins)
     for k = 1:length(movieIDs)
@@ -269,9 +244,6 @@ for nTime = 1:length(params.timeBins)
         if nValidBins > 0
             count = sum(histo(validMask), 'omitnan');
             allCountsPerMovie(nTime, nMovie) = count;
-
-            fracValid = nValidBins / nAllBins;
-            allNormCountsPerMovie(nTime, nMovie) = count / fracValid;
         end
     end
 end
@@ -286,17 +258,6 @@ Tall = movevars(Tall, 'Time', 'Before', 1);
 writetable(Tall, fullfile(filepath,"dataframes",excelFileName), ...
     'Sheet', 'All', 'WriteMode', 'overwritesheet');
 fprintf('[INFO] Sheet "All" exported.\n');
-
-% NORMALISED ALL
-TallNorm = array2table( ...
-        allNormCountsPerMovie(:,keepMovies), ...
-        'VariableNames', filenamesSex);
-TallNorm.Time = round(params.timeBins(:), 4);
-TallNorm = movevars(TallNorm, 'Time', 'Before', 1);
-
-writetable(TallNorm, fullfile(filepath,"dataframes",excelFileNameNaN), ...
-    'Sheet', 'All', 'WriteMode', 'overwritesheet');
-fprintf('[INFO] Sheet "All" exported to %s.\n', excelFileNameNaN);
 
 if strcmp(eventName,'extrusions') %Export once
     exportFeatureDistributions( ...
