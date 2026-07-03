@@ -53,27 +53,22 @@ cells = getCellMetrics(xC, yC, aC,eC,arC,oC, tissue, grid);
 xEall = extrusions_transformed(idx,1);
 yEall = extrusions_transformed(idx,2);
 
+% Classify extrusions using valid bins
+
 keep = false(size(xEall));
 
-if ~isempty(validMask)
+for i = 1:numel(xEall)
 
-    xPix = round(xEall);
-    yPix = round(yEall);
+    ix = find(xEall(i) >= grid.xEdges(1:end-1) & ...
+              xEall(i) <  grid.xEdges(2:end), 1);
 
-    insideImage = ...
-        xPix >= 1 & xPix <= size(validMask,2) & ...
-        yPix >= 1 & yPix <= size(validMask,1);
+    iy = find(yEall(i) >= grid.yEdges(1:end-1) & ...
+              yEall(i) <  grid.yEdges(2:end), 1);
 
-    if any(insideImage)
-
-        idxPixels = sub2ind( ...
-            size(validMask), ...
-            yPix(insideImage), ...
-            xPix(insideImage));
-
-        keep(insideImage) = validMask(idxPixels);
-
+    if ~isempty(ix) && ~isempty(iy)
+        keep(i) = tissue.validBinMask(iy, ix);
     end
+
 end
 
 xEvalid = xEall(keep);
@@ -85,35 +80,30 @@ yEinvalid = yEall(~keep);
 extrusions = getExtrusionMetrics( ...
     xEvalid, yEvalid, tissue,cells, grid);
 
-%% --- DIVISIONS --- RAJOUT
-
+%% --- DIVISIONS --- 
 
 xDall = divisions_transformed(idxD,1);
 yDall = divisions_transformed(idxD,2);
 
 
+% Classify divisions using valid bins
+
 keepD = false(size(xDall));
 
-if ~isempty(validMask)
+for i = 1:numel(xDall)
 
-    xPix = round(xDall);
-    yPix = round(yDall);
+    ix = find(xDall(i) >= grid.xEdges(1:end-1) & ...
+              xDall(i) <  grid.xEdges(2:end), 1);
 
-    insideImage = ...
-        xPix >= 1 & xPix <= size(validMask,2) & ...
-        yPix >= 1 & yPix <= size(validMask,1);
+    iy = find(yDall(i) >= grid.yEdges(1:end-1) & ...
+              yDall(i) <  grid.yEdges(2:end), 1);
 
-    if any(insideImage)
-
-        idxPixels = sub2ind( ...
-            size(validMask), ...
-            yPix(insideImage), ...
-            xPix(insideImage));
-
-        keepD(insideImage) = validMask(idxPixels);
-
+    if ~isempty(ix) && ~isempty(iy)
+        keepD(i) = tissue.validBinMask(iy, ix);
     end
+
 end
+
 xDvalid = xDall(keepD);
 yDvalid = yDall(keepD);
 

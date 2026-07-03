@@ -6,16 +6,34 @@ if isempty(validMask)
     return
 end
 
-[H,W] = size(validMask);
-[xx,yy] = meshgrid(1:W,1:H);
+% Fraction of valid pixels required
+threshold = 0.75;      % 0.50
 
-x = xx(validMask);
-y = yy(validMask);
+nY = numel(grid.yEdges)-1;
+nX = numel(grid.xEdges)-1;
 
-tissue.area = histcounts2( ...
-    y, x, ...
-    grid.yEdges, grid.xEdges);
+tissue.area = zeros(nY,nX);
+tissue.validBinMask = false(nY,nX);
 
-tissue.validBinMask = tissue.area > 0;
+for iy = 1:nY
+
+    y1 = max(1, floor(grid.yEdges(iy)));
+    y2 = min(size(validMask,1), ceil(grid.yEdges(iy+1))-1);
+
+    for ix = 1:nX
+
+        x1 = max(1, floor(grid.xEdges(ix)));
+        x2 = min(size(validMask,2), ceil(grid.xEdges(ix+1))-1);
+
+        block = validMask(y1:y2,x1:x2);
+
+        tissue.area(iy,ix) = sum(block(:));
+
+        fracValid = mean(block(:));
+
+        tissue.validBinMask(iy,ix) = fracValid >= threshold;
+
+    end
+end
 
 end
