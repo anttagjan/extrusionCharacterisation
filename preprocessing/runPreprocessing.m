@@ -28,7 +28,7 @@ piv_relativeTime = [];
 
 %% Procrustes transformation + Build global canvas
 % averaging landmark positions and picking as a reference the most central movie in dataset
-if ~exist(fullfile(filepath,'procrustes_model.mat'),'file')
+if ~exist(fullfile(filepath,'dataframes',strcat(alignMethod,'Alignment_procrustes_model.mat')),'file')
     meanShape = buildMeanMovieShape(landmarks);
 
     refMovieID = pickReferenceMovie(landmarks, meanShape); % medoid reference movie
@@ -36,10 +36,10 @@ if ~exist(fullfile(filepath,'procrustes_model.mat'),'file')
 
     Rglobal = computeGlobalCanvas(landmarks, masks, refMovieID, movieIDs);
     refMovie = landmarks(landmarks(:,3)==refMovieID,1:2);
-    save(fullfile(filepath,'procrustes_model.mat'), ...
+    save(fullfile(filepath,'dataframes',strcat(alignMethod,'Alignment_procrustes_model.mat')), ...
         'meanShape','refMovieID','refMovie', 'Rglobal');
 else
-    load(fullfile(filepath,'procrustes_model.mat'), ...
+    load(fullfile(filepath,'dataframes',strcat(alignMethod,'Alignment_procrustes_model.mat')), ...
         'meanShape','refMovieID','refMovie', 'Rglobal');
 end
 
