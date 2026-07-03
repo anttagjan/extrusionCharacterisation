@@ -131,29 +131,43 @@ r1 = uicontrol(bg,'Style','radiobutton','String','Cumulative',...
 r2 = uicontrol(bg,'Style','radiobutton','String','Single',...
     'Units','normalized','Position',[0.05 0.05 0.9 0.4]);
 
-%% 🔥 NEW CHECKBOX (QC TOGGLE)
+%% CHECKBOX (QC TOGGLE)
 qcToggle = uicontrol(fig,'Style','checkbox',...
     'String','Show QC map',...
     'Units','normalized',...
     'Position',[0.82 0.11 0.15 0.03],...
     'Value',1);
 
+showDataToggle = uicontrol(fig,'Style','checkbox',...
+    'String','Show datapoints',...
+    'Units','normalized',...
+    'Position',[0.82 0.15 0.15 0.03],...
+    'Value',1);
+
+btnAll = uicontrol(fig,'Style','pushbutton',...
+    'String','Select all',...
+    'Units','normalized',...
+    'Position',[0.02 0.92 0.09 0.04],...
+    'Callback',@(~,~) setAllMovies(1));
+
+btnNone = uicontrol(fig,'Style','pushbutton',...
+    'String','Deselect all',...
+    'Units','normalized',...
+    'Position',[0.11 0.92 0.09 0.04],...
+    'Callback',@(~,~) setAllMovies(0));
+
 %% =========================================================
 % MOVIE CHECKBOXES
 %% =========================================================
 
-panel = uipanel(fig,'Position',[0.02 0.15 0.18 0.75],'Title','Movies');
-
-checkboxes = gobjects(nMoviesPlot,1);
-
-for mi = 1:nMoviesPlot
-    checkboxes(mi) = uicontrol(panel,...
-        'Style','checkbox',...
-        'String',filenames{validMovieRows(mi)},...
-        'Value',1,...
-        'Units','normalized',...
-        'Position',[0.05 0.95-mi*0.05 0.9 0.05]);
-end
+movieList = uicontrol(fig,...
+    'Style','listbox',...
+    'Units','normalized',...
+    'Position',[0.02 0.15 0.18 0.75],...
+    'String',filenames(validMovieRows),...
+    'Max',2,...      % Multiple selection
+    'Min',0,...
+    'Value',1:nMoviesPlot);   % All selected initially
 
 %% =========================================================
 % UPDATE FUNCTION
@@ -161,7 +175,25 @@ end
 
 function update()
 
-    selectedIdx = find(arrayfun(@(c)c.Value,checkboxes));
+    selectedIdx = movieList.Value;
+
+    if isempty(selectedIdx)
+
+        scValid.XData = [];
+        scValid.YData = [];
+
+        scInvalid.XData = [];
+        scInvalid.YData = [];
+
+        qcHandle.CData = zeros(nBins^2,1);
+
+        txt.String = 'No movies selected';
+
+        drawnow;
+        return
+
+    end
+    
     selectedMovies = validMovieRows(selectedIdx);
 
     currentBin = round(slider.Value);
@@ -216,6 +248,28 @@ function update()
     end
 
     qcHandle.CData = QCplot(:);
+    
+    persistent qcFig qcAx qcImg
+
+    if isempty(qcFig) || ~isvalid(qcFig)
+
+        qcFig = figure('Color','w','Name','QC Fraction Map');
+
+        qcAx = axes('Parent',qcFig);
+        axis(qcAx,'image');
+        set(qcAx,'YDir','reverse');
+        box(qcAx,'on');
+
+        qcImg = imagesc(qcAx, QCplot);
+        colormap(qcAx, gray);
+        colorbar(qcAx);
+        caxis(qcAx,[0 1]); % fraction range
+
+        title(qcAx,'Fraction of valid bins (movie + time pooled)');
+
+    else
+        set(qcImg,'CData',QCplot);
+    end
 
     %% EXTRUSIONS
     scValid.XData = validX;
@@ -244,6 +298,17 @@ function update()
 
     drawnow limitrate;
 
+    %% DATA VISIBILITY TOGGLE
+    if showDataToggle.Value == 1
+        scValid.Visible = 'on';
+        scInvalid.Visible = 'on';
+        scLand.Visible = 'on';
+    else
+        scValid.Visible = 'off';
+        scInvalid.Visible = 'off';
+        scLand.Visible = 'off';
+    end
+
 end
 
 %% =========================================================
@@ -255,9 +320,14 @@ r1.Callback = @(~,~) update();
 r2.Callback = @(~,~) update();
 qcToggle.Callback = @(~,~) update();
 
-for mi = 1:nMoviesPlot
-    checkboxes(mi).Callback = @(~,~) update();
-end
+movieList.Callback = @(~,~) update();
+
+slider.Callback = @(~,~) update();
+r1.Callback = @(~,~) update();
+r2.Callback = @(~,~) update();
+qcToggle.Callback = @(~,~) update();
+
+showDataToggle.Callback = @(~,~) update();
 
 %% INIT
 update();
@@ -273,6 +343,18 @@ end
 savefig(gcf,...
     fullfile(saveFolder,...
     [eventName '_qualityControl_' sex_icon '.fig']))
+
+function setAllMovies(val)
+
+    if val
+        movieList.Value = 1:nMoviesPlot;
+    else
+        movieList.Value = [];
+    end
+
+    update();
+
+end
 
 
 end
