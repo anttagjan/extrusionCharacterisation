@@ -1,4 +1,4 @@
-function interactiveSpearmanMap(binnedData, params)
+function interactiveSpearmanMap_summary(binnedData,params)
 
 % VARIABLE LIST
 
@@ -20,55 +20,121 @@ nMovies = size(binnedData,1);
 maxN_global = nMovies;
 
 nTimes  = size(binnedData,2);
-timeLabels = params.timeBins;
 
 nBins = params.nBins;
 
 %% =========================================================
-% PRECOMPUTE STACKS (CLEAN NUMERIC ONLY)
+% PRECOMPUTE STACKS (SUMMARY PER MOVIE)
 %% =========================================================
 
 stackData = struct();
 
 for v = 1:nVars
-    stackData.(varNames{v}) = cell(nTimes,1);
+    stackData.(varNames{v}) = nan(nBins,nBins,nMovies);
 end
 
-for t = 1:nTimes
+for m = 1:nMovies
 
-    for v = 1:nVars
+    fprintf('Summarizing movie %d/%d...\n',m,nMovies);
 
-        name = varNames{v};
+    %---------------------------------------
+    % Initialize accumulators
+    %---------------------------------------
+    sumCells = zeros(nBins);
+    sumArea  = zeros(nBins);
+    sumExtr  = zeros(nBins);
+    sumDiv   = zeros(nBins);
 
-        stack = nan(nBins, nBins, nMovies);
+    eccStack = cell(nBins);
+    areaStack = cell(nBins);
+    oriStack = cell(nBins);
 
-        for m = 1:nMovies
+    %---------------------------------------
+    % Loop over time
+    %---------------------------------------
+    for t = 1:nTimes
 
-            d = binnedData{m,t};
-            if isempty(d), continue; end
+        d = binnedData{m,t};
+        if isempty(d), continue; end
 
-            val = computeFeatureMap(d, name);
+        valid = ~isnan(d.cells.count);
 
-            if isempty(val), continue; end
+        c = d.cells.count;
+        c(~valid)=0;
 
-            if iscell(val)
-                val = val{1};
-            end
+        a = d.cells.areaSum;
+        a(~valid)=0;
 
-            if ~isnumeric(val)
-                continue;
-            end
+        e = d.extrusions.count;
+        e(~valid)=0;
 
-            if ~isequal(size(val), [nBins nBins])
-                continue;
-            end
-
-            stack(:,:,m) = double(val);
-
+        if isfield(d,'divisions')
+            dv = d.divisions.count;
+            dv(~valid)=0;
+        else
+            dv = zeros(size(c));
         end
 
-        stackData.(name){t} = stack;
+        sumCells(valid)=sumCells(valid)+c(valid);
+        sumArea(valid)=sumArea(valid)+a(valid);
+        sumExtr(valid)=sumExtr(valid)+e(valid);
+        sumDiv(valid)=sumDiv(valid)+dv(valid);
+
+        [r,cbin]=find(valid);
+
+        for k=1:numel(r)
+
+            ii=r(k);
+            jj=cbin(k);
+
+            areaStack{ii,jj}=[areaStack{ii,jj}; d.cells.area{ii,jj}(:)];
+            eccStack{ii,jj} =[eccStack{ii,jj}; d.cells.eccentricity{ii,jj}(:)];
+            oriStack{ii,jj} =[oriStack{ii,jj}; d.cells.orientation{ii,jj}(:)];
+
+        end
     end
+
+    %---------------------------------------
+    % Compute summary maps
+    %---------------------------------------
+
+    meanArea = sumArea./sumCells;
+    meanArea(sumCells==0)=NaN;
+
+    cvArea = nan(nBins);
+    meanEcc = nan(nBins);
+    cvEcc = nan(nBins);
+    meanOri = nan(nBins);
+    cvOri = nan(nBins);
+
+    for idx=1:numel(sumCells)
+
+        if ~isempty(areaStack{idx})
+            cvArea(idx)=std(areaStack{idx})/mean(areaStack{idx});
+        end
+
+        if ~isempty(eccStack{idx})
+            meanEcc(idx)=mean(eccStack{idx});
+            cvEcc(idx)=std(eccStack{idx})/mean(eccStack{idx});
+        end
+
+        if ~isempty(oriStack{idx})
+            meanOri(idx)=mean(oriStack{idx});
+            cvOri(idx)=std(oriStack{idx})/mean(oriStack{idx});
+        end
+
+    end
+
+    stackData.extrusions(:,:,m)=sumExtr;
+    stackData.divisions(:,:,m)=sumDiv;
+    stackData.mean_area(:,:,m)=meanArea;
+    stackData.cv_area(:,:,m)=cvArea;
+    stackData.mean_eccentricity(:,:,m)=meanEcc;
+    stackData.cv_eccentricity(:,:,m)=cvEcc;
+    stackData.orientation(:,:,m)=meanOri;
+    stackData.cv_orientation(:,:,m)=cvOri;
+    stackData.mean_cells(:,:,m)=sumCells;
+
 end
 
 %% UI
@@ -122,27 +188,16 @@ popupMode = uicontrol(fig,'Style','popupmenu',...
     'Position',[0.85 0.5 0.13 0.05]);
 
 popupMode.Callback = @(~,~) update();
-%% SLIDER
-slider = uicontrol(fig,'Style','slider',...
-    'Units','normalized',...
-    'Position',[0.2 0.05 0.6 0.05],...
-    'Min',1,'Max',nTimes,'Value',1,...
-    'SliderStep',[1/max(nTimes-1,1) 5/max(nTimes-1,1)]);
-slider.Callback = @(~,~) update();
-sliderTooltip = @(t) set(slider,'TooltipString',string(timeLabels{round(t)}));
 
-%% UPDATE FUNCTION
+%% update function
 
 function update()
-
-    t = round(slider.Value);
-    t = max(1, min(nTimes, t));
 
     v1 = varNames{popup1.Value};
     v2 = varNames{popup2.Value};
 
-    A = stackData.(v1){t};
-    B = stackData.(v2){t};
+    A = stackData.(v1);
+    B = stackData.(v2);
     
     P = nan(nBins, nBins);   % p-values
     R = nan(nBins, nBins); % correlation
@@ -200,7 +255,8 @@ function update()
             1 0 0]); % red = significant
          caxis([0 1])
         titleStr = 'p-value (Spearman)';
-        
+
+
     elseif mode == 3
         % =========================
         % SAMPLE SIZE
@@ -224,10 +280,14 @@ function update()
 
                 case 1  % R
                     val = R(i,j);
-                    if isnan(val)
-                        hText(i,j).String = '';
+                    if val < 0.001
+                        hText(i,j).String = '***';
+                    elseif val < 0.01
+                        hText(i,j).String = '**';
+                    elseif val < 0.05
+                        hText(i,j).String = '*';
                     else
-                        hText(i,j).String = sprintf('%.2f', val);
+                        hText(i,j).String = '';
                     end
 
                     hText(i,j).Color = 'k';
@@ -248,20 +308,13 @@ function update()
         end
     end
     
-    if iscell(timeLabels)
-        tLabel = timeLabels{t};
-    else
-        tLabel = timeLabels(t);
-    end
-    slider.TooltipString = string(tLabel);
-    txt.String = sprintf('Time %s | %s vs %s | %s', ...
-    string(tLabel), v1, v2, titleStr);
+    txt.String = sprintf('Whole movie | %s vs %s | %s',...
+    v1,v2,titleStr);
 
     drawnow limitrate
 end
 
 %% CALLBACKS
-slider.Callback = @(~,~) update();
 popup1.Callback = @(~,~) update();
 popup2.Callback = @(~,~) update();
 
