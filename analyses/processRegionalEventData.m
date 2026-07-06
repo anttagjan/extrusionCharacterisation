@@ -26,8 +26,6 @@ else
 end
 
 eventDist = cell(size(binnedData));
-validCoverage = zeros(nBins, nBins);
-nUsed = 0;
 
 for i = 1:size(binnedData,1)
     for j = 1:size(binnedData,2)
@@ -41,15 +39,10 @@ for i = 1:size(binnedData,1)
         if isfield(d,eventName)
             eventDist{i,j} = d.(eventName).count;
         end
-
-        if isfield(d.tissue,'validBinMask')
-            validCoverage = validCoverage + double(d.tissue.validBinMask);
-            nUsed = nUsed + 1;
-        end
+        
     end
 end
 
-globalValidMask = validCoverage > (0.75 * nUsed); 
 totalEvents = sum(heatmapSum(:),'omitnan');
 
 fprintf('\n[INFO] Global number of %s: %d\n', ...
@@ -143,13 +136,13 @@ if ~useSavedZones
     fprintf('[INFO] Saved zone selection to %s\n', zoneFile);
 end
 
-if one_time_execution == "true"
-    one_time_execution = "false";
-elseif one_time_execution == "false" %% PARTIE A REVOIR: POUR QUE DIVISION CALCUL AUSSI POUR MALE
-    one_time_execution = "test";
-elseif one_time_execution == "test"
-    one_time_execution = "true";
-end
+% if one_time_execution == "true"
+%     one_time_execution = "false";
+% elseif one_time_execution == "false" %% PARTIE A REVOIR: POUR QUE DIVISION CALCUL AUSSI POUR MALE
+%     one_time_execution = "test";
+% elseif one_time_execution == "test"
+%     one_time_execution = "true";
+% end
 
 %% Excel files
 % === Combined Excel with Multi-Sheets ===
@@ -178,7 +171,6 @@ nZones = size(selectedBins,3);
 
 for zone = 1:nZones
     zoneMask = selectedBins(:,:,zone);
-    zoneMask = zoneMask & globalValidMask;
     countsPerMovie = zeros(length(params.timeBins), max(movies));
 
     if sum(sum(zoneMask))==0
@@ -222,7 +214,6 @@ for zone = 1:nZones
 end
 
 % === Add Global Sheet ===
-allMask = true(nBins, nBins);
 allCountsPerMovie     = NaN(length(params.timeBins), max(movies));
 
 for nTime = 1:length(params.timeBins)
@@ -236,10 +227,9 @@ for nTime = 1:length(params.timeBins)
             continue
         end
 
-        validMask = allMask & ~isnan(histo);
+        validMask = ~isnan(histo);
 
         nValidBins = sum(validMask(:));
-        nAllBins   = sum(allMask(:));
 
         if nValidBins > 0
             count = sum(histo(validMask), 'omitnan');

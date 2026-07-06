@@ -46,6 +46,29 @@ eC  = getFeatureOrDefault(features_transformed, 'eccentricity', idxF);
 arC = getFeatureOrDefault(features_transformed, 'aspect_ratio', idxF);
 oC  = getFeatureOrDefault(features_transformed, 'orientation', idxF);
 
+keepF = false(size(xC));
+
+for i = 1:numel(xC)
+
+    ix = find(xC(i) >= grid.xEdges(1:end-1) & ...
+              xC(i) <  grid.xEdges(2:end), 1);
+
+    iy = find(yC(i) >= grid.yEdges(1:end-1) & ...
+              yC(i) <  grid.yEdges(2:end), 1);
+
+    if ~isempty(ix) && ~isempty(iy)
+        keepF(i) = tissue.validBinMask(iy, ix);
+    end
+end
+
+% apply same filter to all features
+xC  = xC(keepF);
+yC  = yC(keepF);
+aC  = aC(keepF);
+eC  = eC(keepF);
+arC = arC(keepF);
+oC  = oC(keepF);
+
 cells = getCellMetrics(xC, yC, aC,eC,arC,oC, tissue, grid);
 
 %% --- EXTRUSIONS ---
