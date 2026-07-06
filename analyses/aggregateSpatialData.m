@@ -14,6 +14,7 @@ sumDiv   = [];
 eccStack = {};
 arStack  = {};
 oriStack = {};
+areaStack = {};
 cellStack = [];
 
 % =========================================================
@@ -45,6 +46,7 @@ for i = 1:nM
             eccStack = cell(nBins);
             arStack  = cell(nBins);
             oriStack = cell(nBins);
+            areaStack = cell(nBins);
 
             initialized = true;
         end
@@ -108,6 +110,12 @@ for i = 1:nM
                 oriStack{iBin,jBin} = [oriStack{iBin,jBin}; ori(:)];
             end
 
+            area = d.cells.area{iBin,jBin};
+
+            if ~isempty(ecc)
+                areaStack{iBin,jBin} = [areaStack{iBin,jBin}; area(:)];
+            end
+
         end
     end
 
@@ -134,9 +142,6 @@ summary.extrusionRate(sumCells == 0) = NaN;
 summary.divisionRate = sumDiv ./ sumCells;
 summary.divisionRate(sumCells == 0) = NaN;
 
-summary.meanArea = sumArea ./ sumCells;
-summary.meanArea(sumCells == 0) = NaN;
-
 % =========================================================
 % STACKED FEATURES MEANS
 % =========================================================
@@ -144,19 +149,29 @@ summary.meanArea(sumCells == 0) = NaN;
 summary.meanEccentricity = nan(nBins);
 summary.meanAspectRatio   = nan(nBins);
 summary.meanOrientation   = nan(nBins);
+summary.meanArea   = nan(nBins);
+
 
 for idx = 1:numel(sumCells)
 
     if ~isempty(eccStack{idx})
-        summary.meanEccentricity(idx) = mean(eccStack{idx});
+        summary.meanEccentricity(idx) = mean(eccStack{idx},'omitnan');
+        summary.cvEccentricity(idx) = std(eccStack{idx},'omitnan') / mean(eccStack{idx},'omitnan');
     end
 
     if ~isempty(arStack{idx})
-        summary.meanAspectRatio(idx) = mean(arStack{idx});
+        summary.meanAspectRatio(idx) = mean(arStack{idx}, 'omitnan');
+        summary.cvAspectRatio(idx) = std(arStack{idx},'omitnan') / mean(arStack{idx},'omitnan');
     end
 
     if ~isempty(oriStack{idx})
-        summary.meanOrientation(idx) = mean(oriStack{idx});
+        summary.meanOrientation(idx) = mean(oriStack{idx},'omitnan');
+        summary.cvOrientation(idx) = std(oriStack{idx},'omitnan') / mean(oriStack{idx},'omitnan');
+    end
+    
+    if ~isempty(areaStack{idx})
+        summary.meanArea(idx) = mean(areaStack{idx},'omitnan');
+        summary.cvArea(idx) = std(areaStack{idx},'omitnan') / mean(areaStack{idx},'omitnan');
     end
 
 end
