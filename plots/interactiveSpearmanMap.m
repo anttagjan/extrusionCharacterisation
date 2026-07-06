@@ -3,6 +3,7 @@ function interactiveSpearmanMap(binnedData, params)
 [nMovies, nTimes] = size(binnedData);
 nBins = params.nBins;
 timeLabels = params.timeBins;
+maxN_global = nMovies;
 
 %% =========================================================
 % VARIABLE LIST
@@ -116,6 +117,12 @@ popup2 = uicontrol(fig,'Style','popupmenu',...
     'Units','normalized',...
     'Position',[0.85 0.6 0.13 0.05]);
 
+popupMode = uicontrol(fig,'Style','popupmenu',...
+    'String',{'Spearman R','p-value','Sample size N'},...
+    'Units','normalized',...
+    'Position',[0.85 0.5 0.13 0.05]);
+
+popupMode.Callback = @(~,~) update();
 %% SLIDER
 slider = uicontrol(fig,'Style','slider',...
     'Units','normalized',...
@@ -126,18 +133,18 @@ slider.Callback = @(~,~) update();
 sliderTooltip = @(t) set(slider,'TooltipString',string(timeLabels{round(t)}));
 
 %% OPTIONAL: sample size map (VERY useful)
-fig2 = figure('Color','w','Name','Sample size per bin');
-ax2 = axes('Parent',fig2);
-hImgN = imagesc(ax2, zeros(nBins));
-axis image
-colorbar
-title('n movies contributing per bin')
+% fig2 = figure('Color','w','Name','Sample size per bin');
+% ax2 = axes('Parent',fig2);
+% hImgN = imagesc(ax2, zeros(nBins));
+% axis image
+% colorbar
+% title('n movies contributing per bin')
 
 %% =========================================================
 % UPDATE FUNCTION
 %% =========================================================
 
-    function update()
+function update()
 
     t = round(slider.Value);
     t = max(1, min(nTimes, t));
@@ -147,10 +154,10 @@ title('n movies contributing per bin')
 
     A = stackData.(v1){t};
     B = stackData.(v2){t};
-
+    
     P = nan(nBins, nBins);   % p-values
-    R = nan(nBins, nBins);   % correlation (optional, can remove)
-    N = zeros(nBins, nBins);
+    R = nan(nBins, nBins); % correlation
+    N = zeros(nBins, nBins); % number of samples
 
     for i = 1:nBins
         for j = 1:nBins
@@ -162,32 +169,51 @@ title('n movies contributing per bin')
 
             N(i,j) = sum(ok);
 
-            if N(i,j) < 5
+            if N(i,j) < 5   % stricter threshold (important!)
                 continue
             end
-
+            
             [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
                 'Type','Spearman', 'Rows','complete');
 
         end
     end
 
-    % =====================================================
-    % MAIN HEATMAP = SIGNIFICANCE MAP
-    % =====================================================
+    mode = popupMode.Value;
 
-    sigMap = P < 0.05;   % logical mask
+    if mode == 1
+        % =========================
+        % SPEARMAN R
+        % =========================
+        hImg.CData = R;
+        colormap(ax, blueWhiteRed())
+        caxis([-1 1])
+        titleStr = 'Spearman R';
 
-    hImg.CData = sigMap;
+    elseif mode == 2
+        % =========================
+        % P-VALUE (significance view)
+        % =========================
+        sig = P < 0.05;
 
-    colormap(ax, [0.7 0.7 0.7;   % NOT significant (gray)
-                  0.1 0.6 0.2]); % significant (green)
+        hImg.CData = sig;
 
-    caxis([0 1])
+        colormap(ax, [1 1 1;   % white = not significant
+            1 0 0]); % red = significant
 
-    % =====================================================
-    % TEXT: show sample size per bin
-    % =====================================================
+        caxis([0 1])
+        titleStr = 'p-value (Spearman)';
+
+    elseif mode == 3
+        % =========================
+        % SAMPLE SIZE
+        % =========================
+        hImg.CData = N;
+
+        colormap(ax, hot)
+        caxis([0 maxN_global])
+        titleStr = 'Sample size (N)';
+    end
 
     for i = 1:nBins
         for j = 1:nBins
@@ -197,37 +223,42 @@ title('n movies contributing per bin')
                 continue
             end
 
-            % show sample size
-            hText(i,j).String = sprintf('%d', N(i,j));
+            switch mode
 
-            % color depending on significance
-            if P(i,j) < 0.05
-                hText(i,j).Color = 'w';
-            else
-                hText(i,j).Color = 'k';
+                case 1  % R
+                    val = R(i,j);
+                    if isnan(val)
+                        hText(i,j).String = '';
+                    else
+                        hText(i,j).String = sprintf('%.2f', val);
+                    end
+
+                    hText(i,j).Color = 'k';
+
+                case 2  % p-value
+                    val = P(i,j);
+                    if isnan(val)
+                        hText(i,j).String = '';
+                    else
+                        hText(i,j).String = sprintf('%.3f', val);
+                    end
+
+                case 3  % N
+                    hText(i,j).String = sprintf('%d', N(i,j));
+
             end
 
         end
     end
-
-    % =====================================================
-    % update sample size figure
-    % =====================================================
-
-    hImgN.CData = N;
-
-    % =====================================================
-    % label
-    % =====================================================
-
+    
     if iscell(timeLabels)
         tLabel = timeLabels{t};
     else
         tLabel = timeLabels(t);
     end
-
-    txt.String = sprintf('Time %s | %s vs %s | p < 0.05 map', ...
-        string(tLabel), v1, v2);
+    slider.TooltipString = string(tLabel);
+    txt.String = sprintf('Time %s | %s vs %s | %s', ...
+    string(tLabel), v1, v2, titleStr);
 
     drawnow limitrate
 end
@@ -240,4 +271,23 @@ popup2.Callback = @(~,~) update();
 %% INIT
 update();
 
+    function cmap = blueWhiteRed()
+
+        n = 256;
+
+        blue = [0 0.2 1];
+        white = [1 1 1];
+        red = [1 0 0];
+
+        c1 = [linspace(blue(1), white(1), n/2)' ...
+            linspace(blue(2), white(2), n/2)' ...
+            linspace(blue(3), white(3), n/2)'];
+
+        c2 = [linspace(white(1), red(1), n/2)' ...
+            linspace(white(2), red(2), n/2)' ...
+            linspace(white(3), red(3), n/2)'];
+
+        cmap = [c1; c2];
+
+    end
 end
