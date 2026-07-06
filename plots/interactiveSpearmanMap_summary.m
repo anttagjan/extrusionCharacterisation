@@ -256,7 +256,6 @@ function update()
          caxis([0 1])
         titleStr = 'p-value (Spearman)';
 
-
     elseif mode == 3
         % =========================
         % SAMPLE SIZE
@@ -280,6 +279,16 @@ function update()
 
                 case 1  % R
                     val = R(i,j);
+                    if isnan(val)
+                        hText(i,j).String = '';
+                    else
+                        hText(i,j).String = sprintf('%.2f', val);
+                    end
+
+                    hText(i,j).Color = 'k';
+
+                case 2  % p-value
+                    val = P(i,j);
                     if val < 0.001
                         hText(i,j).String = '***';
                     elseif val < 0.01
@@ -288,16 +297,6 @@ function update()
                         hText(i,j).String = '*';
                     else
                         hText(i,j).String = '';
-                    end
-
-                    hText(i,j).Color = 'k';
-
-                case 2  % p-value
-                    val = P(i,j);
-                    if isnan(val)
-                        hText(i,j).String = '';
-                    else
-                        hText(i,j).String = sprintf('%.3f', val);
                     end
 
                 case 3  % N
