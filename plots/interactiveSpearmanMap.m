@@ -200,7 +200,7 @@ function update()
             1 0 0]); % red = significant
          caxis([0 1])
         titleStr = 'p-value (Spearman)';
-        
+
     elseif mode == 3
         % =========================
         % SAMPLE SIZE
@@ -234,10 +234,15 @@ function update()
 
                 case 2  % p-value
                     val = P(i,j);
-                    if isnan(val)
-                        hText(i,j).String = '';
+
+                    if val < 0.001
+                        hText(i,j).String = '***';
+                    elseif val < 0.01
+                        hText(i,j).String = '**';
+                    elseif val < 0.05
+                        hText(i,j).String = '*';
                     else
-                        hText(i,j).String = sprintf('%.3f', val);
+                        hText(i,j).String = '';
                     end
 
                 case 3  % N
