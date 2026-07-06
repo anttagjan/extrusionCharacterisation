@@ -1,6 +1,8 @@
-function interactiveSpearmanMap(binnedData, nBins)
+function interactiveSpearmanMap(binnedData, params)
 
 [nMovies, nTimes] = size(binnedData);
+nBins = params.nBins;
+timeLabels = params.timeBins;
 
 %% =========================================================
 % VARIABLE LIST
@@ -74,7 +76,25 @@ end
 fig = figure('Color','w','Name','Spearman Spatial Coupling (Across Movies)');
 
 ax = axes('Parent',fig,'Position',[0.1 0.2 0.75 0.7]);
-hImg = imagesc(nan(nBins));
+hImg = imagesc(ax, nan(nBins));
+
+hText = gobjects(nBins,nBins);
+
+for i = 1:nBins
+    for j = 1:nBins
+
+        hText(i,j) = text(ax,...
+            j,...
+            i,...
+            '',...
+            'HorizontalAlignment','center',...
+            'VerticalAlignment','middle',...
+            'FontSize',7,...
+            'Color','k');
+
+    end
+end
+
 axis image
 colormap(ax, turbo)
 colorbar
@@ -102,11 +122,13 @@ slider = uicontrol(fig,'Style','slider',...
     'Position',[0.2 0.05 0.6 0.05],...
     'Min',1,'Max',nTimes,'Value',1,...
     'SliderStep',[1/max(nTimes-1,1) 5/max(nTimes-1,1)]);
+slider.Callback = @(~,~) update();
+sliderTooltip = @(t) set(slider,'TooltipString',string(timeLabels{round(t)}));
 
 %% OPTIONAL: sample size map (VERY useful)
 fig2 = figure('Color','w','Name','Sample size per bin');
 ax2 = axes('Parent',fig2);
-hImgN = imagesc(zeros(nBins));
+hImgN = imagesc(ax2, zeros(nBins));
 axis image
 colorbar
 title('n movies contributing per bin')
@@ -115,7 +137,7 @@ title('n movies contributing per bin')
 % UPDATE FUNCTION
 %% =========================================================
 
-function update()
+    function update()
 
     t = round(slider.Value);
     t = max(1, min(nTimes, t));
@@ -126,7 +148,8 @@ function update()
     A = stackData.(v1){t};
     B = stackData.(v2){t};
 
-    R = nan(nBins, nBins);
+    P = nan(nBins, nBins);   % p-values
+    R = nan(nBins, nBins);   % correlation (optional, can remove)
     N = zeros(nBins, nBins);
 
     for i = 1:nBins
@@ -139,19 +162,72 @@ function update()
 
             N(i,j) = sum(ok);
 
-            if N(i,j) < 5   % stricter threshold (important!)
+            if N(i,j) < 5
                 continue
             end
 
-            R(i,j) = corr(x(ok), y(ok), 'Type','Spearman');
+            [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
+                'Type','Spearman', 'Rows','complete');
 
         end
     end
 
-    hImg.CData = R;
+    % =====================================================
+    % MAIN HEATMAP = SIGNIFICANCE MAP
+    % =====================================================
+
+    sigMap = P < 0.05;   % logical mask
+
+    hImg.CData = sigMap;
+
+    colormap(ax, [0.7 0.7 0.7;   % NOT significant (gray)
+                  0.1 0.6 0.2]); % significant (green)
+
+    caxis([0 1])
+
+    % =====================================================
+    % TEXT: show sample size per bin
+    % =====================================================
+
+    for i = 1:nBins
+        for j = 1:nBins
+
+            if N(i,j) == 0
+                hText(i,j).String = '';
+                continue
+            end
+
+            % show sample size
+            hText(i,j).String = sprintf('%d', N(i,j));
+
+            % color depending on significance
+            if P(i,j) < 0.05
+                hText(i,j).Color = 'w';
+            else
+                hText(i,j).Color = 'k';
+            end
+
+        end
+    end
+
+    % =====================================================
+    % update sample size figure
+    % =====================================================
+
     hImgN.CData = N;
 
-    txt.String = sprintf('Time %d | %s vs %s', t, v1, v2);
+    % =====================================================
+    % label
+    % =====================================================
+
+    if iscell(timeLabels)
+        tLabel = timeLabels{t};
+    else
+        tLabel = timeLabels(t);
+    end
+
+    txt.String = sprintf('Time %s | %s vs %s | p < 0.05 map', ...
+        string(tLabel), v1, v2);
 
     drawnow limitrate
 end

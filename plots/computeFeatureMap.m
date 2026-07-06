@@ -32,8 +32,8 @@ switch featureName
 end
 
 % enforce scalar-per-bin rule
-if ~isscalar(val)
-    val = NaN;
-end
+% if ~isscalar(val)
+%     val = NaN;
+% end
 
 end
