@@ -183,7 +183,7 @@ popup2 = uicontrol(fig,'Style','popupmenu',...
     'Position',[0.85 0.6 0.13 0.05]);
 
 popupMode = uicontrol(fig,'Style','popupmenu',...
-    'String',{'Spearman R','p-value','Sample size N'},...
+    'String',{'Spearman R', 'Sample size N'},...
     'Units','normalized',...
     'Position',[0.85 0.5 0.13 0.05]);
 
@@ -244,23 +244,40 @@ function update()
         set(fig,'Color','w')
         titleStr = 'Spearman R';
 
+        % Remove previous significance boundaries
+        delete(findall(ax,'Tag','SigBoundary'));
+
+        % Significant bins
+        sigMask = (P < 0.05) & ~isnan(P);
+
+        hold(ax,'on')
+
+        for i = 1:nBins
+            for j = 1:nBins
+
+                if ~sigMask(i,j)
+                    continue
+                end
+
+                rectangle(ax,...
+                    'Position',[j-0.5, i-0.5, 1, 1],...
+                    'EdgeColor','k',...
+                    'LineWidth',2,...
+                    'Curvature',0,...
+                    'Tag','SigBoundary');
+
+            end
+        end
+
+        hold(ax,'off')
+
     elseif mode == 2
-        % =========================
-        % P-VALUE (significance view)
-        % =========================
-        sig = P < 0.05;
-        hImg.CData = sig;
 
-        colormap(ax, [1 1 1;   % white = not significant
-            1 0 0]); % red = significant
-         caxis([0 1])
-        titleStr = 'p-value (Spearman)';
-
-    elseif mode == 3
         % =========================
         % SAMPLE SIZE
         % =========================
         hImg.CData = N;
+        delete(findall(ax,'Tag','SigBoundary'));
 
         colormap(ax, hot)
         caxis([0 maxN_global])
@@ -287,19 +304,7 @@ function update()
 
                     hText(i,j).Color = 'k';
 
-                case 2  % p-value
-                    val = P(i,j);
-                    if val < 0.001
-                        hText(i,j).String = '***';
-                    elseif val < 0.01
-                        hText(i,j).String = '**';
-                    elseif val < 0.05
-                        hText(i,j).String = '*';
-                    else
-                        hText(i,j).String = '';
-                    end
-
-                case 3  % N
+                case 2  % N
                     hText(i,j).String = sprintf('%d', N(i,j));
 
             end
