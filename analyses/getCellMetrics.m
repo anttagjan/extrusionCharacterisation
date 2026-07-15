@@ -11,7 +11,7 @@ iy = iy(valid);
 area = area(valid);
 eccentricity = eccentricity(valid);
 aspectRatio = aspectRatio(valid);
-orientation = abs(orientation(valid));
+orientation = abs(90-abs(orientation(valid))); %Change orientation
 
 nBins = grid.nBins;
 
