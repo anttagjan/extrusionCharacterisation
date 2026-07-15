@@ -1,0 +1,377 @@
+function interactiveCrossCorrMap(binnedData,params)
+%INTERACTIVECROSSCORRMAP  Carte spatiale interactive de corrélation croisée
+%   (cross-correlation) entre deux paramètres, avec un slider de décalage
+%   temporel (lag) pour aligner les courbes (ex: aligner des pics) avant
+%   de calculer la corrélation de Spearman, bin par bin.
+
+%% =========================================================
+% LISTE DES VARIABLES
+%% =========================================================
+
+varNames = {
+    'extrusions'
+    'divisions'
+    'mean_area'
+    'cv_area'
+    'mean_eccentricity'
+    'cv_eccentricity'
+    'orientation'
+    'cv_orientation'
+    'mean_cells'
+};
+
+nVars   = numel(varNames);
+nMovies = size(binnedData,1);
+nTimes  = size(binnedData,2);
+nBins   = params.nBins;
+
+% Pas de temps réel entre deux frames (juste pour l'affichage du lag)
+if isfield(params,'dt') && ~isempty(params.dt)
+    dt = params.dt;
+else
+    dt = 1;
+end
+
+% Décalage maximal autorisé (en nombre de frames)
+if isfield(params,'maxLagFrames') && ~isempty(params.maxLagFrames)
+    maxLagFrames = min(params.maxLagFrames, nTimes-1);
+else
+    maxLagFrames = nTimes-1;
+end
+
+if maxLagFrames < 1
+    maxLagFrames = 1;   % garde-fou si peu de points temporels
+end
+
+%% =========================================================
+% PRÉCALCUL : SÉRIES TEMPORELLES PAR BIN / FILM / TEMPS
+% (aucune sommation ni moyenne sur le temps : on garde toute la dynamique)
+%% =========================================================
+
+timeSeries = struct();
+for v = 1:nVars
+    timeSeries.(varNames{v}) = nan(nBins,nBins,nTimes,nMovies);
+end
+
+for m = 1:nMovies
+
+    fprintf('Traitement du film %d/%d...\n',m,nMovies);
+
+    for t = 1:nTimes
+
+        d = binnedData{m,t};
+        if isempty(d)
+            continue
+        end
+
+        valid = ~isnan(d.cells.count);
+
+        c = d.cells.count;
+        c(~valid) = NaN;
+
+        e = d.extrusions.count;
+        e(~valid) = NaN;
+
+        if isfield(d,'divisions')
+            dv = d.divisions.count;
+            dv(~valid) = NaN;
+        else
+            dv = nan(size(c));
+        end
+
+        meanArea = nan(nBins);
+        cvArea   = nan(nBins);
+        meanEcc  = nan(nBins);
+        cvEcc    = nan(nBins);
+        meanOri  = nan(nBins);
+        cvOri    = nan(nBins);
+
+        for idx = 1:numel(c)
+
+            if ~valid(idx)
+                continue
+            end
+
+            aVals = d.cells.area{idx};
+            if ~isempty(aVals)
+                meanArea(idx) = mean(aVals);
+                cvArea(idx)   = std(aVals)/mean(aVals);
+            end
+
+            eVals = d.cells.eccentricity{idx};
+            if ~isempty(eVals)
+                meanEcc(idx) = mean(eVals);
+                cvEcc(idx)   = std(eVals)/mean(eVals);
+            end
+
+            oVals = d.cells.orientation{idx};
+            if ~isempty(oVals)
+                meanOri(idx) = mean(oVals);
+                cvOri(idx)   = std(oVals)/mean(oVals);
+            end
+
+        end
+
+        timeSeries.extrusions(:,:,t,m)        = e;
+        timeSeries.divisions(:,:,t,m)         = dv;
+        timeSeries.mean_area(:,:,t,m)         = meanArea;
+        timeSeries.cv_area(:,:,t,m)           = cvArea;
+        timeSeries.mean_eccentricity(:,:,t,m) = meanEcc;
+        timeSeries.cv_eccentricity(:,:,t,m)   = cvEcc;
+        timeSeries.orientation(:,:,t,m)       = meanOri;
+        timeSeries.cv_orientation(:,:,t,m)    = cvOri;
+        timeSeries.mean_cells(:,:,t,m)        = c;
+
+    end
+end
+
+clear binnedData   % libère la structure d'entrée, allège aussi la sauvegarde .fig
+
+%% =========================================================
+% UI
+%% =========================================================
+
+fig = figure('Color','w','Name','Interactive Cross-Correlation Map (time-lagged)');
+
+ax = axes('Parent',fig,'Position',[0.1 0.25 0.75 0.65]);
+hImg = imagesc(ax, nan(nBins));
+
+hText = gobjects(nBins,nBins);
+
+for i = 1:nBins
+    for j = 1:nBins
+        hText(i,j) = text(ax, j, i, '', ...
+            'HorizontalAlignment','center', ...
+            'VerticalAlignment','middle', ...
+            'FontSize',7, ...
+            'Color','k');
+    end
+end
+
+axis(ax,'image')
+colormap(ax, turbo)
+colorbar
+caxis([-1 1])
+
+txt = uicontrol(fig,'Style','text', ...
+    'Units','normalized', ...
+    'Position',[0.1 0.16 0.6 0.03], ...
+    'BackgroundColor','w', ...
+    'HorizontalAlignment','left');
+
+%% DROPDOWNS : choix des deux paramètres
+popup1 = uicontrol(fig,'Style','popupmenu', ...
+    'String',varNames, ...
+    'Units','normalized', ...
+    'Position',[0.85 0.75 0.13 0.05]);
+
+popup2 = uicontrol(fig,'Style','popupmenu', ...
+    'String',varNames, ...
+    'Units','normalized', ...
+    'Position',[0.85 0.65 0.13 0.05], ...
+    'Value',min(2,nVars));
+
+popupMode = uicontrol(fig,'Style','popupmenu', ...
+    'String',{'Spearman R','Sample size N'}, ...
+    'Units','normalized', ...
+    'Position',[0.85 0.55 0.13 0.05]);
+
+%% SLIDER : décalage temporel (lag) entre les deux courbes
+lagSlider = uicontrol(fig,'Style','slider', ...
+    'Units','normalized', ...
+    'Position',[0.1 0.08 0.6 0.04], ...
+    'Min',-maxLagFrames, ...
+    'Max', maxLagFrames, ...
+    'Value',0, ...
+    'SliderStep',[1/(2*maxLagFrames) , 5/(2*maxLagFrames)]);
+
+lagLabel = uicontrol(fig,'Style','text', ...
+    'Units','normalized', ...
+    'Position',[0.72 0.08 0.23 0.04], ...
+    'BackgroundColor','w', ...
+    'HorizontalAlignment','left', ...
+    'String','Lag = 0');
+
+%% =========================================================
+% FONCTION DE MISE À JOUR
+%% =========================================================
+
+function update(~,~)
+
+    v1 = varNames{popup1.Value};
+    v2 = varNames{popup2.Value};
+
+    A = timeSeries.(v1);   % nBins x nBins x nTimes x nMovies
+    B = timeSeries.(v2);
+
+    lag = round(lagSlider.Value);
+    lagSlider.Value = lag;   % force un décalage entier (en frames)
+
+    lagLabel.String = sprintf('Lag = %d (%.3g unités)', lag, lag*dt);
+
+    [R,P,N] = computeCrossCorr(A,B,lag);
+
+    mode = popupMode.Value;
+
+    if mode == 1
+        % =========================
+        % SPEARMAN R
+        % =========================
+        Rmask = isnan(R);
+
+        hImg.CData = R;
+
+        colormap(ax, blueWhiteRed())
+        caxis([-1 1])
+
+        hImg.AlphaData = ~Rmask;
+        set(fig,'Color','w')
+        titleStr = 'Spearman R';
+
+        delete(findall(ax,'Tag','SigBoundary'));
+
+        sigMask = (P < 0.05) & ~isnan(P);
+
+        hold(ax,'on')
+        for i = 1:nBins
+            for j = 1:nBins
+                if ~sigMask(i,j)
+                    continue
+                end
+                rectangle(ax, ...
+                    'Position',[j-0.5, i-0.5, 1, 1], ...
+                    'EdgeColor','k', ...
+                    'LineWidth',2, ...
+                    'Curvature',0, ...
+                    'Tag','SigBoundary');
+            end
+        end
+        hold(ax,'off')
+
+    elseif mode == 2
+        % =========================
+        % SAMPLE SIZE
+        % =========================
+        hImg.CData = N;
+        hImg.AlphaData = ones(size(N));
+        delete(findall(ax,'Tag','SigBoundary'));
+
+        colormap(ax, hot)
+        caxis([0 max(N(:))+eps])
+        titleStr = 'Sample size (N)';
+    end
+
+    for i = 1:nBins
+        for j = 1:nBins
+
+            if N(i,j) == 0
+                hText(i,j).String = '';
+                continue
+            end
+
+            switch mode
+                case 1
+                    val = R(i,j);
+                    if isnan(val)
+                        hText(i,j).String = '';
+                    else
+                        hText(i,j).String = sprintf('%.2f', val);
+                    end
+                    hText(i,j).Color = 'k';
+
+                case 2
+                    hText(i,j).String = sprintf('%d', N(i,j));
+            end
+        end
+    end
+
+    txt.String = sprintf('%s vs %s (lag = %d frames) | %s', ...
+        v1, v2, lag, titleStr);
+
+    drawnow limitrate
+end
+
+%% =========================================================
+% CALCUL DE LA CORRÉLATION CROISÉE (avec décalage temporel)
+%% =========================================================
+
+function [R,P,N] = computeCrossCorr(A,B,lag)
+
+    nT = size(A,3);
+
+    if lag >= 0
+        idxA = 1 : (nT-lag);
+        idxB = (1+lag) : nT;
+    else
+        L = -lag;
+        idxA = (1+L) : nT;
+        idxB = 1 : (nT-L);
+    end
+
+    Asub = A(:,:,idxA,:);   % nBins x nBins x nT' x nMovies
+    Bsub = B(:,:,idxB,:);
+
+    R = nan(nBins,nBins);
+    P = nan(nBins,nBins);
+    N = zeros(nBins,nBins);
+
+    for i = 1:nBins
+        for j = 1:nBins
+
+            x = squeeze(Asub(i,j,:,:));
+            y = squeeze(Bsub(i,j,:,:));
+
+            x = x(:);
+            y = y(:);
+
+            ok = isfinite(x) & isfinite(y);
+            N(i,j) = sum(ok);
+
+            if N(i,j) < 5   % seuil minimal
+                continue
+            end
+
+            [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
+                'Type','Spearman', 'Rows','complete');
+        end
+    end
+end
+
+%% =========================================================
+% CALLBACKS
+%% =========================================================
+
+popup1.Callback    = @update;
+popup2.Callback    = @update;
+popupMode.Callback = @update;
+lagSlider.Callback = @update;
+
+%% =========================================================
+% INIT
+%% =========================================================
+
+update();
+
+    function cmap = blueWhiteRed()
+
+        n = 256;
+
+        blue  = [0 0.2 1];
+        white = [1 1 1];
+        red   = [1 0 0];
+
+        c1 = [linspace(blue(1),  white(1), n/2)' ...
+              linspace(blue(2),  white(2), n/2)' ...
+              linspace(blue(3),  white(3), n/2)'];
+
+        c2 = [linspace(white(1), red(1), n/2)' ...
+              linspace(white(2), red(2), n/2)' ...
+              linspace(white(3), red(3), n/2)'];
+
+        cmap = [c1; c2];
+
+    end
+
+fprintf('\n Interactive Cross-Correlation Map: Finished \n')
+
+end
