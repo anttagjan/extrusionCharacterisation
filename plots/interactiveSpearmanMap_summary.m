@@ -137,6 +137,9 @@ for m = 1:nMovies
 
 end
 
+clear binnedData %Create space to save then the figure
+
+
 %% UI
 
 fig = figure('Color','w','Name','Dynamic Spearman Spatial Coupling');
