@@ -125,7 +125,121 @@ for m = 1:nMovies
     end
 end
 
-clear binnedData   % libère la structure d'entrée, allège aussi la sauvegarde .fig
+clear binnedData   % Allège la sauvegarde .fig
+
+
+
+%% =========================================================
+% RÉSUMÉ : meilleur lag pour chaque combinaison de variables
+% (score = moyenne des |R| sur tout le tissu)
+%% =========================================================
+
+summaryTable = {};
+
+k = 1;
+
+for v1 = 1:nVars
+
+    for v2 = v1+1:nVars
+
+        fprintf('Searching best lag : %s vs %s\n', ...
+            varNames{v1}, varNames{v2});
+
+        A = timeSeries.(varNames{v1});
+        B = timeSeries.(varNames{v2});
+
+        bestScore = -Inf;
+        bestLag   = NaN;
+        bestR     = [];
+        bestP     = [];
+        bestN     = [];
+
+        for lag = -maxLagFrames:maxLagFrames
+
+            [R,P,N] = computeCrossCorr(A,B,lag);
+
+            % Bins valides
+            valid = isfinite(R);
+
+            if ~any(valid(:))
+                continue
+            end
+
+            % Score global du tissu
+            meanAbsR = mean(abs(R(valid)));
+
+            % Petit bonus si beaucoup de bins sont significatifs
+            nSig = sum(P(valid) < 0.05);
+
+            score = meanAbsR + 1e-5*nSig;
+
+            if score > bestScore
+
+                bestScore = score;
+                bestLag   = lag;
+                bestR     = R;
+                bestP     = P;
+                bestN     = N;
+
+            end
+
+        end
+
+        if isempty(bestR)
+            continue
+        end
+
+        % Informations complémentaires
+        valid = isfinite(bestR);
+
+        meanAbsR = mean(abs(bestR(valid)));
+
+        meanSignedR = mean(bestR(valid));
+
+        nSig = sum(bestP(valid) < 0.05);
+
+        % Bin présentant la plus forte corrélation (uniquement informatif)
+        [~,idx] = max(abs(bestR(:)));
+        [row,col] = ind2sub(size(bestR),idx);
+        bestSignedR = bestR(row,col);
+
+        summaryTable{k,1}  = varNames{v1};
+        summaryTable{k,2}  = varNames{v2};
+        summaryTable{k,3}  = bestLag;
+        summaryTable{k,4}  = meanAbsR;
+        summaryTable{k,5}  = bestScore;
+        summaryTable{k,6}  = row;
+        summaryTable{k,7}  = col;
+        summaryTable{k,8}  = nSig;
+        summaryTable{k,9}  = bestSignedR;
+        summaryTable{k,10} = meanSignedR;
+
+        k = k+1;
+
+    end
+
+end
+
+figure('Name','Best Cross-Correlation Summary',...
+       'Color','w',...
+       'Position',[100 100 1200 600]);
+
+uitable(...
+    'Data',summaryTable,...
+    'ColumnName',{...
+        'Variable 1',...
+        'Variable 2',...
+        'Best lag',...
+        'Mean |R|',...
+        'Score',...
+        'Best row',...
+        'Best column',...
+        'Significant bins',...
+        'Best bin R',...
+        'Mean signed R'},...
+    'Units','normalized',...
+    'Position',[0 0 1 1]);
+
 
 %% =========================================================
 % UI
