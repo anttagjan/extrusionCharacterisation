@@ -219,6 +219,17 @@ function update()
             
             [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
                 'Type','Spearman', 'Rows','complete');
+            %% FDR correction
+
+            validP = isfinite(P);
+
+            Pvec = P(validP);
+
+            P_FDR_vec = mafdr(Pvec,'BHFDR',true);
+
+            P_FDR = nan(size(P));
+
+            P_FDR(validP) = P_FDR_vec;
 
         end
     end
@@ -248,7 +259,7 @@ function update()
         delete(findall(ax,'Tag','SigBoundary'));
 
         % Significant bins
-        sigMask = (P < 0.05) & ~isnan(P);
+        sigMask = (P_FDR < 0.05) & ~isnan(P_FDR);
 
         hold(ax,'on')
 
