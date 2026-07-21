@@ -1,8 +1,5 @@
 function interactiveCrossCorrMap(binnedData,params)
 %INTERACTIVECROSSCORRMAP  Carte spatiale interactive de corrélation croisée
-%   (cross-correlation) entre deux paramètres, avec un slider de décalage
-%   temporel (lag) pour aligner les courbes (ex: aligner des pics) avant
-%   de calculer la corrélation de Spearman, bin par bin.
 
 %% =========================================================
 % LISTE DES VARIABLES
@@ -172,170 +169,269 @@ popup2 = uicontrol(fig,'Style','popupmenu', ...
     'Value',min(2,nVars));
 
 popupMode = uicontrol(fig,'Style','popupmenu', ...
-    'String',{'Spearman R','Sample size N'}, ...
+    'String',{
+    'Maximum |R|'
+    'Optimal lag'
+    'Number of movies'
+    'Mean frames/movie'
+    'Paired observations'
+    }, ...
     'Units','normalized', ...
     'Position',[0.85 0.55 0.13 0.05]);
 
-%% SLIDER : décalage temporel (lag) entre les deux courbes
-lagSlider = uicontrol(fig,'Style','slider', ...
-    'Units','normalized', ...
-    'Position',[0.1 0.08 0.6 0.04], ...
-    'Min',-maxLagFrames, ...
-    'Max', maxLagFrames, ...
-    'Value',0, ...
-    'SliderStep',[1/(2*maxLagFrames) , 5/(2*maxLagFrames)]);
-
-lagLabel = uicontrol(fig,'Style','text', ...
-    'Units','normalized', ...
-    'Position',[0.72 0.08 0.23 0.04], ...
-    'BackgroundColor','w', ...
-    'HorizontalAlignment','left', ...
-    'String','Lag = 0');
+results = struct();
+currentVariables = '';
 
 %% =========================================================
 % FONCTION DE MISE À JOUR
 %% =========================================================
 
-function update(~,~)
+    function update(~,~)
 
-    v1 = varNames{popup1.Value};
-    v2 = varNames{popup2.Value};
 
-    A = timeSeries.(v1);   % nBins x nBins x nTimes x nMovies
-    B = timeSeries.(v2);
+        v1 = varNames{popup1.Value};
+        v2 = varNames{popup2.Value};
 
-    lag = round(lagSlider.Value);
-    lagSlider.Value = lag;   % force un décalage entier (en frames)
 
-    lagLabel.String = sprintf('Lag = %d (%.3g unités)', lag, lag*dt);
+        A = timeSeries.(v1);
+        B = timeSeries.(v2);
 
-    [R,P,N] = computeCrossCorr(A,B,lag);
 
-    mode = popupMode.Value;
 
-    if mode == 1
-        % =========================
-        % SPEARMAN R
-        % =========================
-        Rmask = isnan(R);
+        %% =====================================================
+        % COMPUTE ONLY WHEN VARIABLE PAIR CHANGES
+        %% =====================================================
 
-        hImg.CData = R;
+        variablePair = [v1 '_' v2];
 
-        colormap(ax, blueWhiteRed())
-        caxis([-1 1])
+        if ~strcmp(currentVariables,variablePair)
 
-        hImg.AlphaData = ~Rmask;
-        set(fig,'Color','w')
-        titleStr = 'Spearman R';
+            fprintf('Computing %s vs %s...\n',v1,v2)
 
-        delete(findall(ax,'Tag','SigBoundary'));
 
-        sigMask = (P < 0.05) & ~isnan(P);
+            [results.LagCorr,...
+                results.LagP,...
+                results.LagN,...
+                results.lagValues,...
+                results.BestR,...
+                results.BestLag,...
+                results.BestP,...
+                results.BestNobs,...
+                results.BestNmovies,...
+                results.BestMedianFrames] = ...
+                computeOptimalLag(A,B,maxLagFrames);
 
-        hold(ax,'on')
-        for i = 1:nBins
-            for j = 1:nBins
-                if ~sigMask(i,j)
-                    continue
-                end
-                rectangle(ax, ...
-                    'Position',[j-0.5, i-0.5, 1, 1], ...
-                    'EdgeColor','k', ...
-                    'LineWidth',2, ...
-                    'Curvature',0, ...
-                    'Tag','SigBoundary');
-            end
+
+
+            %% FDR correction on optimal p-values
+
+            validP = isfinite(results.BestP);
+
+            P_FDR = nan(size(results.BestP));
+
+            P_FDR(validP) = mafdr(...
+                results.BestP(validP),...
+                'BHFDR',true);
+
+
+            results.P_FDR = P_FDR;
+
+
+            currentVariables = variablePair;
+
         end
-        hold(ax,'off')
 
-    elseif mode == 2
-        % =========================
-        % SAMPLE SIZE
-        % =========================
-        hImg.CData = N;
-        hImg.AlphaData = ones(size(N));
+
+
+        BestR   = results.BestR;
+        BestLag = results.BestLag;
+        BestNobs       = results.BestNobs;
+        BestNmovies    = results.BestNmovies;
+        BestMedianFrames = results.BestMedianFrames;
+        P_FDR   = results.P_FDR;
+
+
+
+        mode = popupMode.Value;
+
+
+
         delete(findall(ax,'Tag','SigBoundary'));
 
-        colormap(ax, hot)
-        caxis([0 max(N(:))+eps])
-        titleStr = 'Sample size (N)';
-    end
 
-    for i = 1:nBins
-        for j = 1:nBins
 
-            if N(i,j) == 0
-                hText(i,j).String = '';
-                continue
-            end
+        %% =====================================================
+        % DISPLAY MODES
+        %% =====================================================
 
-            switch mode
-                case 1
-                    val = R(i,j);
-                    if isnan(val)
-                        hText(i,j).String = '';
-                    else
-                        hText(i,j).String = sprintf('%.2f', val);
+        switch mode
+
+
+            case 1
+                % =============================================
+                % MAXIMUM CORRELATION
+                % =============================================
+
+                hImg.CData = BestR;
+
+                colormap(ax,blueWhiteRed())
+                caxis([-1 1])
+
+                hImg.AlphaData = ~isnan(BestR);
+
+
+                sigMask = (P_FDR <0.05) & isfinite(P_FDR);
+
+
+                hold(ax,'on')
+
+                for i=1:nBins
+                    for j=1:nBins
+
+                        if sigMask(i,j)
+
+                            rectangle(ax,...
+                                'Position',[j-0.5 i-0.5 1 1],...
+                                'EdgeColor','k',...
+                                'LineWidth',2,...
+                                'Tag','SigBoundary');
+
+                        end
+
                     end
-                    hText(i,j).Color = 'k';
+                end
 
-                case 2
-                    hText(i,j).String = sprintf('%d', N(i,j));
+                hold(ax,'off')
+
+
+                titleStr = 'Maximum Spearman R';
+
+
+
+            case 2
+                % =============================================
+                % OPTIMAL LAG
+                % =============================================
+
+                hImg.CData = BestLag;
+
+                hImg.AlphaData = ~isnan(BestLag);
+
+
+                colormap(ax,parula)
+
+                caxis([-maxLagFrames maxLagFrames])
+
+
+                titleStr = 'Optimal lag (frames)';
+
+
+
+            case 3
+                % =============================================
+                % SAMPLE SIZE
+                % =============================================
+
+                hImg.CData = BestNmovies;
+
+                colormap(ax,hot)
+                caxis([0 nMovies])
+
+                titleStr = 'Contributing movies';
+            case 4 
+                hImg.CData = BestMedianFrames;
+
+                colormap(ax,hot)
+                caxis([0 max(BestMedianFrames(:),[],'omitnan')])
+
+                titleStr = 'Mean paired frames/movie';
+            case 5
+                hImg.CData = BestNobs;
+
+                colormap(ax,hot)
+                caxis([0 max(BestNobs(:))+eps])
+
+                titleStr = 'Total paired observations';
+        end
+
+
+
+        %% =====================================================
+        % TEXT VALUES INSIDE MAP
+        %% =====================================================
+
+
+        for i=1:nBins
+            for j=1:nBins
+
+
+                switch mode
+
+
+                    case 1
+
+                        if isnan(BestR(i,j))
+                            hText(i,j).String='';
+                        else
+                            hText(i,j).String=sprintf('%.2f',BestR(i,j));
+                        end
+
+
+
+                    case 2
+
+                        if isnan(BestLag(i,j))
+                            hText(i,j).String='';
+                        else
+                            hText(i,j).String=sprintf('%d',BestLag(i,j));
+                        end
+
+
+
+            case 3   % Number of movies
+
+                if BestNmovies(i,j)==0
+                    hText(i,j).String='';
+                else
+                    hText(i,j).String=sprintf('%d',BestNmovies(i,j));
+                end
+
+
+            case 4   % Mean frames/movie
+
+                if isnan(BestMedianFrames(i,j))
+                    hText(i,j).String='';
+                else
+                    hText(i,j).String=sprintf('%.1f',BestMedianFrames(i,j));
+                end
+
+
+            case 5   % Total observations
+
+                if BestNobs(i,j)==0
+                    hText(i,j).String='';
+                else
+                    hText(i,j).String=sprintf('%d',BestNobs(i,j));
+                end
+
+
+                end
+
             end
         end
+
+
+
+        txt.String = sprintf(...
+            '%s vs %s | %s',...
+            v1,v2,titleStr);
+
+
+
+        drawnow limitrate
+
+
     end
-
-    txt.String = sprintf('%s vs %s (lag = %d frames) | %s', ...
-        v1, v2, lag, titleStr);
-
-    drawnow limitrate
-end
-
-%% =========================================================
-% CALCUL DE LA CORRÉLATION CROISÉE (avec décalage temporel)
-%% =========================================================
-
-function [R,P,N] = computeCrossCorr(A,B,lag)
-
-    nT = size(A,3);
-
-    if lag >= 0
-        idxA = 1 : (nT-lag);
-        idxB = (1+lag) : nT;
-    else
-        L = -lag;
-        idxA = (1+L) : nT;
-        idxB = 1 : (nT-L);
-    end
-
-    Asub = A(:,:,idxA,:);   % nBins x nBins x nT' x nMovies
-    Bsub = B(:,:,idxB,:);
-
-    R = nan(nBins,nBins);
-    P = nan(nBins,nBins);
-    N = zeros(nBins,nBins);
-
-    for i = 1:nBins
-        for j = 1:nBins
-
-            x = squeeze(Asub(i,j,:,:));
-            y = squeeze(Bsub(i,j,:,:));
-
-            x = x(:);
-            y = y(:);
-
-            ok = isfinite(x) & isfinite(y);
-            N(i,j) = sum(ok);
-
-            if N(i,j) < 5   % seuil minimal
-                continue
-            end
-
-            [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
-                'Type','Spearman', 'Rows','complete');
-        end
-    end
-end
 
 %% =========================================================
 % CALLBACKS
@@ -344,7 +440,6 @@ end
 popup1.Callback    = @update;
 popup2.Callback    = @update;
 popupMode.Callback = @update;
-lagSlider.Callback = @update;
 
 %% =========================================================
 % INIT
