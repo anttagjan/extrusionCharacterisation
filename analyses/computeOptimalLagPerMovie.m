@@ -7,92 +7,82 @@ function [MovieR,MovieLag,MovieP,MovieN] = ...
 
 
 nBins  = size(A,1);
-nTimes = size(A,3);
 nMovies = size(A,4);
-
+minFrames =5;
 
 MovieR   = nan(nBins,nBins,nMovies);
 MovieLag = nan(nBins,nBins,nMovies);
 MovieP   = nan(nBins,nBins,nMovies);
 MovieN   = zeros(nBins,nBins,nMovies);
 
-
-
 lagValues = -maxLag:maxLag;
-
-
 
 for m = 1:nMovies
 
-    fprintf('Movie %d/%d\n',m,nMovies);
-
-
     for i = 1:nBins
-
         for j = 1:nBins
 
+            xFull = reshape(A(i,j,:,m),[],1);
+            yFull = reshape(B(i,j,:,m),[],1);
 
-            bestR = NaN;
-            bestLag = NaN;
-            bestP = NaN;
-            bestN = 0;
-
-
-            xFull = squeeze(A(i,j,:,m));
-            yFull = squeeze(B(i,j,:,m));
+            Rcurve = nan(length(lagValues),1);
+            Pcurve = nan(length(lagValues),1);
+            Ncurve = zeros(length(lagValues),1);
 
 
-            for lag = lagValues
+            for k=1:length(lagValues)
 
+                lag = lagValues(k);
 
-                if lag >= 0
-
-                    idxA = 1:(nTimes-lag);
-                    idxB = (1+lag):nTimes;
-
+                if lag>=0
+                    x=xFull(1:end-lag);
+                    y=yFull(1+lag:end);
                 else
-
-                    L = -lag;
-
-                    idxA = (1+L):nTimes;
-                    idxB = 1:(nTimes-L);
-
+                    L=-lag;
+                    x=xFull(1+L:end);
+                    y=yFull(1:end-L);
                 end
 
 
-                x = xFull(idxA);
-                y = yFull(idxB);
+                ok=isfinite(x)&isfinite(y);
 
-
-                ok = isfinite(x) & isfinite(y);
-
-
-                if sum(ok)<5
+                if sum(ok)<minFrames
                     continue
                 end
 
 
-                [R,P] = corr(x(ok),y(ok),...
-                    'Type','Spearman');
+                [Rcurve(k),Pcurve(k)] = corr(...
+                    x(ok),y(ok),...
+                    'Type','Spearman','Rows','complete');
 
 
-                if isnan(bestR) || abs(R)>abs(bestR)
-
-                    bestR = R;
-                    bestLag = lag;
-                    bestP = P;
-                    bestN = sum(ok);
-
-                end
+                Ncurve(k)=sum(ok);
 
             end
 
 
-            MovieR(i,j,m)=bestR;
-            MovieLag(i,j,m)=bestLag;
-            MovieP(i,j,m)=bestP;
-            MovieN(i,j,m)=bestN;
+            valid=isfinite(Rcurve);
 
+            if ~any(valid)
+                continue
+            end
+
+
+            [~,idx]=max(abs(Rcurve(valid)));
+
+            lagIdx=find(valid);
+            lagIdx=lagIdx(idx);
+
+
+            if abs(Rcurve(lagIdx))<0.3
+                continue
+            end
+
+
+            MovieR(i,j,m)=Rcurve(lagIdx);
+            MovieLag(i,j,m)=lagValues(lagIdx);
+            MovieP(i,j,m)=Pcurve(lagIdx);
+            MovieN(i,j,m)=Ncurve(lagIdx);
 
         end
     end

@@ -18,6 +18,7 @@ nVars = numel(varNames);
 
 nMovies = size(binnedData,1);
 maxN_global = nMovies;
+minN = ceil(0.7*nMovies);
 
 nTimes  = size(binnedData,2);
 timeLabels = params.timeBins;
@@ -62,6 +63,11 @@ for t = 1:nTimes
             if ~isequal(size(val), [nBins nBins])
                 continue;
             end
+
+            validMask = d.tissue.validBinMask;
+
+            % Todo lo que quede fuera del tejido se considera missing
+            val(~validMask) = NaN;
 
             stack(:,:,m) = double(val);
 
@@ -158,27 +164,24 @@ function update()
 
             N(i,j) = sum(ok);
 
-            if N(i,j) < 5   % stricter threshold (important!)
-                continue
+            if N(i,j) >= minN  % stricter threshold (important!)
+                [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
+                    'Type','Spearman', 'Rows','complete');
             end
-            
-            [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
-                'Type','Spearman', 'Rows','complete');
-
-            %% FDR correction
-
-            validP = isfinite(P);
-
-            Pvec = P(validP);
-
-            P_FDR_vec = mafdr(Pvec,'BHFDR',true);
-
-            P_FDR = nan(size(P));
-
-            P_FDR(validP) = P_FDR_vec;
 
         end
     end
+    
+    %% FDR correction
+
+    validP = isfinite(P);
+
+    P_FDR = nan(size(P));
+
+    if any(validP(:))
+        P_FDR(validP)=mafdr(P(validP),'BHFDR',true);
+    end
+
 
     mode = popupMode.Value;
 

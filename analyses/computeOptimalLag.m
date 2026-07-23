@@ -7,7 +7,10 @@ function [LagCorr,LagP,LagN,lagValues,...
 
 nBins = size(A,1);
 nT    = size(A,3);
+nMovies = size(A,4);
 
+minMovies = ceil(0.7*nMovies);   % o el porcentaje que prefieras
+minFrames = 5;                   % mínimo de frames por película
 
 %% =========================================================
 % LAG AXIS
@@ -81,50 +84,38 @@ for k = 1:nLag
 
         for j = 1:nBins
             
-            movieCounts = zeros(size(A,4),1);
+            movieCounts = zeros(nMovies,1);
 
-            for m = 1:size(A,4)
+            for m = 1:nMovies
 
-                xx = squeeze(Asub(i,j,:,m));
-                yy = squeeze(Bsub(i,j,:,m));
+                xx = reshape(Asub(i,j,:,m),[],1);
+                yy = reshape(Bsub(i,j,:,m),[],1);
 
                 movieCounts(m) = sum(isfinite(xx) & isfinite(yy));
 
             end
 
-            % Number of movies contributing enough data
-            nMovieValid = sum(movieCounts >= 5);
+            % Películas con suficientes observaciones temporales
+            validMovies = movieCounts >= minFrames;
 
-            % Require at least 5 movies
-            if nMovieValid < 5
+            if sum(validMovies) < minMovies
                 continue
             end
 
-            x = squeeze(Asub(i,j,:,:));
-            y = squeeze(Bsub(i,j,:,:));
-
-
-            % concatenate time and movies
-            x = x(:);
-            y = y(:);
-
+            x = reshape(Asub(i,j,:,:),[],1);
+            y = reshape(Bsub(i,j,:,:),[],1);
 
             valid = isfinite(x) & isfinite(y);
 
             N = sum(valid);
 
-
-            if N < 5
+            if N < minMovies*minFrames
                 continue
             end
-
-
 
             [R,P] = corr(x(valid),y(valid),...
                 'Type','Spearman',...
                 'Rows','complete');
-
-
 
             %% Store complete lag profile
 
@@ -146,10 +137,10 @@ for k = 1:nLag
                 BestNobs(i,j) = N;
 
                 % ---- number of movies contributing ----
-                BestNmovies(i,j) = sum(movieCounts > 0);
+                BestNmovies(i,j) = sum(validMovies);
 
                 if BestNmovies(i,j) > 0
-                    BestMedianFrames(i,j) = median(movieCounts(movieCounts>0));
+                    BestMedianFrames(i,j) = median(movieCounts(validMovies));
                 end
 
             end

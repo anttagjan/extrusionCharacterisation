@@ -62,7 +62,7 @@ for m = 1:nMovies
             continue
         end
 
-        valid = ~isnan(d.cells.count);
+        valid = d.tissue.validBinMask;
 
         c = d.cells.count;
         c(~valid) = NaN;
@@ -90,22 +90,50 @@ for m = 1:nMovies
                 continue
             end
 
+            %% AREA
+
             aVals = d.cells.area{idx};
+
             if ~isempty(aVals)
-                meanArea(idx) = mean(aVals);
-                cvArea(idx)   = std(aVals)/mean(aVals);
+
+                meanVal = mean(aVals);
+
+                if meanVal>0
+                    meanArea(idx)=meanVal;
+                    cvArea(idx)=std(aVals)/meanVal;
+                end
+
             end
+
+            %% ECCENTRICITY
 
             eVals = d.cells.eccentricity{idx};
+
             if ~isempty(eVals)
-                meanEcc(idx) = mean(eVals);
-                cvEcc(idx)   = std(eVals)/mean(eVals);
+
+                meanVal = mean(eVals);
+
+                if meanVal>0
+                    meanEcc(idx)=meanVal;
+                    cvEcc(idx)=std(eVals)/meanVal;
+                end
+
             end
 
+            %% ORIENTATION
+
             oVals = d.cells.orientation{idx};
+
             if ~isempty(oVals)
-                meanOri(idx) = mean(oVals);
-                cvOri(idx)   = std(oVals)/mean(oVals);
+
+                meanOri(idx)=mean(oVals);
+
+                meanVal = mean(oVals);
+
+                if meanVal~=0
+                    cvOri(idx)=std(oVals)/abs(meanVal);
+                end
+
             end
 
         end
@@ -119,7 +147,6 @@ for m = 1:nMovies
         timeSeries.orientation(:,:,t,m)       = meanOri;
         timeSeries.cv_orientation(:,:,t,m)    = cvOri;
         timeSeries.mean_cells(:,:,t,m)        = c;
-
     end
 end
 
@@ -486,8 +513,7 @@ end
 
                 % optional robustness filter:
                 % require enough movies
-                sigMask = sigMask & ...
-                    (BestNmovies >= round(0.5*nMovies));
+                sigMask = sigMask & (BestNmovies >= ceil(0.7*nMovies));
 
 
                 hold(ax,'on')
@@ -514,8 +540,12 @@ end
                 titleStr = 'Median individual R (Wilcoxon FDR<0.05)';
 
             case 7
+                
+                sigMask = movieResults.MovieP_FDR < 0.05;
+                displayMap = movieResults.MedianMovieLag;
+                displayMap(~sigMask) = NaN;
 
-                hImg.CData = movieResults.MedianMovieLag;
+                hImg.CData = displayMap;
 
                 colormap(ax,parula)
 
@@ -525,16 +555,25 @@ end
 
 
             case 8
+                
+                sigMask = movieResults.MovieP_FDR < 0.05;
 
-                hImg.CData = movieResults.LagVariability;
+                displayMap = movieResults.LagVariability;
+                displayMap(~sigMask) = NaN;
+
+                hImg.CData = displayMap;
 
                 colormap(ax,hot)
                 caxis(ax,[0 max(movieResults.LagVariability(:),[],'omitnan')])
                 titleStr = 'Lag variability (IQR)';
 
             case 9
+                sigMask = movieResults.MovieP_FDR < 0.05;
 
-                hImg.CData = movieResults.NegativeFraction;
+                displayMap = movieResults.NegativeFraction;
+                 displayMap(~sigMask) = NaN;
+
+                hImg.CData = displayMap;
 
                 colormap(ax,hot)
 
@@ -542,8 +581,12 @@ end
 
                 titleStr = 'Fraction of movies with R<-0.3';
             case 10
+                sigMask = movieResults.MovieP_FDR < 0.05;
+                
+                displayMap = movieResults.PositiveFraction;
+                displayMap(~sigMask) = NaN;
 
-                hImg.CData = movieResults.PositiveFraction;
+                hImg.CData = displayMap;
 
                 colormap(ax,hot)
                 caxis([0 1])
@@ -621,23 +664,37 @@ end
 
                         hText(i,j).String = sprintf('%.1f',...
                             movieResults.MedianMovieLag(i,j));
-
+                    if ~sigMask(i,j)
+                        hText(i,j).String='';
+                        continue
+                    end
 
                     case 8
 
                         hText(i,j).String = sprintf('%.1f',...
                             movieResults.LagVariability(i,j));
-
+                        if ~sigMask(i,j)
+                            hText(i,j).String='';
+                            continue
+                        end
 
                     case 9
 
                         hText(i,j).String = sprintf('%.0f%%',...
                             100*movieResults.NegativeFraction(i,j));
+                        if ~sigMask(i,j)
+                            hText(i,j).String='';
+                            continue
+                        end
 
                     case 10
 
                         hText(i,j).String=sprintf('%.0f%%',...
                             100*movieResults.PositiveFraction(i,j));
+                        if ~sigMask(i,j)
+                            hText(i,j).String='';
+                            continue
+                        end
 
                 end
 
