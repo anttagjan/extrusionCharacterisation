@@ -1,4 +1,4 @@
-function interactiveCrossCorrMap(binnedData,params)
+function interactiveCrossCorrMap(filepath,binnedData,params)
 %INTERACTIVECROSSCORRMAP  Carte spatiale interactive de corrélation croisée
 
 %% =========================================================
@@ -30,11 +30,12 @@ else
 end
 
 % Décalage maximal autorisé (en nombre de frames)
-if isfield(params,'maxLagFrames') && ~isempty(params.maxLagFrames)
-    maxLagFrames = min(params.maxLagFrames, nTimes-1);
-else
-    maxLagFrames = nTimes-1;
-end
+% if isfield(params,'maxLagFrames') && ~isempty(params.maxLagFrames)
+%     maxLagFrames = min(params.maxLagFrames, nTimes-1);
+% else
+%     maxLagFrames = nTimes-1;
+% end
+maxLagFrames = 6;
 
 if maxLagFrames < 1
     maxLagFrames = 1;   % garde-fou si peu de points temporels
@@ -124,120 +125,6 @@ end
 
 clear binnedData   % Allège la sauvegarde .fig
 
-
-
-%% =========================================================
-% RÉSUMÉ : meilleur lag pour chaque combinaison de variables
-% (score = moyenne des |R| sur tout le tissu)
-%% =========================================================
-
-summaryTable = {};
-
-k = 1;
-
-for v1 = 1:nVars
-
-    for v2 = v1+1:nVars
-
-        fprintf('Searching best lag : %s vs %s\n', ...
-            varNames{v1}, varNames{v2});
-
-        A = timeSeries.(varNames{v1});
-        B = timeSeries.(varNames{v2});
-
-        bestScore = -Inf;
-        bestLag   = NaN;
-        bestR     = [];
-        bestP     = [];
-        bestN     = [];
-
-        for lag = -maxLagFrames:maxLagFrames
-
-            [R,P,N] = computeCrossCorr(A,B,lag);
-
-            % Bins valides
-            valid = isfinite(R);
-
-            if ~any(valid(:))
-                continue
-            end
-
-            % Score global du tissu
-            meanAbsR = mean(abs(R(valid)));
-
-            % Petit bonus si beaucoup de bins sont significatifs
-            nSig = sum(P(valid) < 0.05);
-
-            score = meanAbsR + 1e-5*nSig;
-
-            if score > bestScore
-
-                bestScore = score;
-                bestLag   = lag;
-                bestR     = R;
-                bestP     = P;
-                bestN     = N;
-
-            end
-
-        end
-
-        if isempty(bestR)
-            continue
-        end
-
-        % Informations complémentaires
-        valid = isfinite(bestR);
-
-        meanAbsR = mean(abs(bestR(valid)));
-
-        meanSignedR = mean(bestR(valid));
-
-        nSig = sum(bestP(valid) < 0.05);
-
-        % Bin présentant la plus forte corrélation (uniquement informatif)
-        [~,idx] = max(abs(bestR(:)));
-        [row,col] = ind2sub(size(bestR),idx);
-        bestSignedR = bestR(row,col);
-
-        summaryTable{k,1}  = varNames{v1};
-        summaryTable{k,2}  = varNames{v2};
-        summaryTable{k,3}  = bestLag;
-        summaryTable{k,4}  = meanAbsR;
-        summaryTable{k,5}  = bestScore;
-        summaryTable{k,6}  = row;
-        summaryTable{k,7}  = col;
-        summaryTable{k,8}  = nSig;
-        summaryTable{k,9}  = bestSignedR;
-        summaryTable{k,10} = meanSignedR;
-
-        k = k+1;
-
-    end
-
-end
-
-figure('Name','Best Cross-Correlation Summary',...
-       'Color','w',...
-       'Position',[100 100 1200 600]);
-
-uitable(...
-    'Data',summaryTable,...
-    'ColumnName',{...
-        'Variable 1',...
-        'Variable 2',...
-        'Best lag',...
-        'Mean |R|',...
-        'Score',...
-        'Best row',...
-        'Best column',...
-        'Significant bins',...
-        'Best bin R',...
-        'Mean signed R'},...
-    'Units','normalized',...
-    'Position',[0 0 1 1]);
-
-
 %% =========================================================
 % UI
 %% =========================================================
@@ -284,17 +171,34 @@ popup2 = uicontrol(fig,'Style','popupmenu', ...
 
 popupMode = uicontrol(fig,'Style','popupmenu', ...
     'String',{
-    'Maximum |R|'
-    'Optimal lag'
+    'Pooled Maximum |R|'
+    'Pooled Optimal lag'
     'Number of movies'
     'Mean frames/movie'
     'Paired observations'
+    'Median individual R'
+    'Median individual lag'
+    'Lag variability (IQR)'
+    'Fraction negative R'
+    'Fraction positive R'
     }, ...
     'Units','normalized', ...
     'Position',[0.85 0.55 0.13 0.05]);
 
 results = struct();
 currentVariables = '';
+
+%% =====================================================
+% STORAGE FOR PER-MOVIE ANALYSIS
+%% =====================================================
+
+movieResults = struct();
+
+saveFolder = 'CrossCorrResults';
+
+if ~exist(fullfile(filepath,saveFolder),'dir')
+    mkdir(fullfile(filepath,saveFolder))
+end
 
 %% =========================================================
 % FONCTION DE MISE À JOUR
@@ -335,21 +239,121 @@ currentVariables = '';
                 results.BestMedianFrames] = ...
                 computeOptimalLag(A,B,maxLagFrames);
 
-
-
             %% FDR correction on optimal p-values
 
             validP = isfinite(results.BestP);
-
             P_FDR = nan(size(results.BestP));
-
             P_FDR(validP) = mafdr(...
                 results.BestP(validP),...
                 'BHFDR',true);
 
-
             results.P_FDR = P_FDR;
 
+            %% =====================================================
+            % PER MOVIE ANALYSIS
+            %% =====================================================
+
+            movieFile = fullfile(saveFolder,...
+                ['MovieLag_' variablePair '.mat']);
+
+
+            if exist(movieFile,'file')
+
+                fprintf('Loading per-movie results...\n')
+
+                load(movieFile,...
+                    'MovieR',...
+                    'MovieLag',...
+                    'MovieP',...
+                    'MovieN');
+
+            else
+
+                fprintf('Computing per-movie lag analysis...\n')
+
+                [MovieR,...
+                    MovieLag,...
+                    MovieP,...
+                    MovieN] = ...
+                    computeOptimalLagPerMovie(A,B,maxLagFrames);
+
+
+                save(movieFile,...
+                    'MovieR',...
+                    'MovieLag',...
+                    'MovieP',...
+                    'MovieN',...
+                    '-v7.3');
+
+            end
+
+            %% =====================================================
+            % SUMMARY ACROSS MOVIES
+            %% =====================================================
+
+            MedianMovieR = median(MovieR,3,'omitnan');
+
+            MedianMovieLag = median(MovieLag,3,'omitnan');
+
+            LagVariability = iqr(MovieLag,3);
+            Rthreshold = 0.3;
+            NegativeFraction = mean(MovieR<-Rthreshold,3,'omitnan');
+            PositiveFraction = mean(MovieR>Rthreshold,3,'omitnan');
+            DirectionAgreement = max(PositiveFraction,...
+                         NegativeFraction);
+
+            movieResults.MovieR = MovieR;
+            movieResults.MovieLag = MovieLag;
+            movieResults.MovieP = MovieP;
+            movieResults.MovieN = MovieN;
+            
+            movieResults.MedianMovieR = MedianMovieR;
+            movieResults.MedianMovieLag = MedianMovieLag;
+            movieResults.LagVariability = LagVariability;
+            movieResults.NegativeFraction = NegativeFraction;
+            movieResults.PositiveFraction = PositiveFraction;
+            movieResults.DirectionAgreement = DirectionAgreement;
+            
+            %% =====================================================
+            % WILCOXON SIGNED-RANK ACROSS MOVIES
+            %% =====================================================
+
+            MovieP_R = nan(nBins,nBins);
+
+            for i = 1:nBins
+                for j = 1:nBins
+
+                    r = squeeze(MovieR(i,j,:));
+
+                    r = r(isfinite(r));
+
+
+                    % minimum number of movies
+                    if numel(r) < 5
+                        continue
+                    end
+
+
+                    % test median correlation != 0
+                    MovieP_R(i,j) = signrank(r,0);
+
+                end
+            end
+
+
+            %% FDR correction
+
+            validP = isfinite(MovieP_R);
+
+            MovieP_FDR = nan(size(MovieP_R));
+
+            MovieP_FDR(validP) = mafdr(...
+                MovieP_R(validP),...
+                'BHFDR',true);
+
+
+            movieResults.MovieP_R = MovieP_R;
+            movieResults.MovieP_FDR = MovieP_FDR;
 
             currentVariables = variablePair;
 
@@ -466,6 +470,86 @@ currentVariables = '';
                 caxis([0 max(BestNobs(:))+eps])
 
                 titleStr = 'Total paired observations';
+            case 6
+
+                hImg.CData = movieResults.MedianMovieR;
+
+                colormap(ax,blueWhiteRed())
+                caxis([-1 1])
+
+                hImg.AlphaData = isfinite(movieResults.MedianMovieR);
+
+
+                % Significant bins after FDR correction
+                sigMask = movieResults.MovieP_FDR < 0.05;
+
+
+                % optional robustness filter:
+                % require enough movies
+                sigMask = sigMask & ...
+                    (BestNmovies >= round(0.5*nMovies));
+
+
+                hold(ax,'on')
+
+                for i = 1:nBins
+                    for j = 1:nBins
+
+                        if sigMask(i,j)
+
+                            rectangle(ax,...
+                                'Position',[j-0.5 i-0.5 1 1],...
+                                'EdgeColor','k',...
+                                'LineWidth',2,...
+                                'Tag','SigBoundary');
+
+                        end
+
+                    end
+                end
+
+                hold(ax,'off')
+
+
+                titleStr = 'Median individual R (Wilcoxon FDR<0.05)';
+
+            case 7
+
+                hImg.CData = movieResults.MedianMovieLag;
+
+                colormap(ax,parula)
+
+                caxis([-maxLagFrames maxLagFrames])
+
+                titleStr = 'Median individual lag';
+
+
+            case 8
+
+                hImg.CData = movieResults.LagVariability;
+
+                colormap(ax,hot)
+                caxis(ax,[0 max(movieResults.LagVariability(:),[],'omitnan')])
+                titleStr = 'Lag variability (IQR)';
+
+            case 9
+
+                hImg.CData = movieResults.NegativeFraction;
+
+                colormap(ax,hot)
+
+                caxis([0 1])
+
+                titleStr = 'Fraction of movies with R<-0.3';
+            case 10
+
+                hImg.CData = movieResults.PositiveFraction;
+
+                colormap(ax,hot)
+                caxis([0 1])
+
+                titleStr='Fraction of movies with R>0.3';
+
         end
 
 
@@ -502,32 +586,58 @@ currentVariables = '';
 
 
 
-            case 3   % Number of movies
+                    case 3   % Number of movies
 
-                if BestNmovies(i,j)==0
-                    hText(i,j).String='';
-                else
-                    hText(i,j).String=sprintf('%d',BestNmovies(i,j));
-                end
-
-
-            case 4   % Mean frames/movie
-
-                if isnan(BestMedianFrames(i,j))
-                    hText(i,j).String='';
-                else
-                    hText(i,j).String=sprintf('%.1f',BestMedianFrames(i,j));
-                end
+                        if BestNmovies(i,j)==0
+                            hText(i,j).String='';
+                        else
+                            hText(i,j).String=sprintf('%d',BestNmovies(i,j));
+                        end
 
 
-            case 5   % Total observations
+                    case 4   % Mean frames/movie
 
-                if BestNobs(i,j)==0
-                    hText(i,j).String='';
-                else
-                    hText(i,j).String=sprintf('%d',BestNobs(i,j));
-                end
+                        if isnan(BestMedianFrames(i,j))
+                            hText(i,j).String='';
+                        else
+                            hText(i,j).String=sprintf('%.1f',BestMedianFrames(i,j));
+                        end
 
+
+                    case 5   % Total observations
+
+                        if BestNobs(i,j)==0
+                            hText(i,j).String='';
+                        else
+                            hText(i,j).String=sprintf('%d',BestNobs(i,j));
+                        end
+                    case 6
+
+                        hText(i,j).String = sprintf('%.2f',...
+                            movieResults.MedianMovieR(i,j));
+
+
+                    case 7
+
+                        hText(i,j).String = sprintf('%.1f',...
+                            movieResults.MedianMovieLag(i,j));
+
+
+                    case 8
+
+                        hText(i,j).String = sprintf('%.1f',...
+                            movieResults.LagVariability(i,j));
+
+
+                    case 9
+
+                        hText(i,j).String = sprintf('%.0f%%',...
+                            100*movieResults.NegativeFraction(i,j));
+
+                    case 10
+
+                        hText(i,j).String=sprintf('%.0f%%',...
+                            100*movieResults.PositiveFraction(i,j));
 
                 end
 
