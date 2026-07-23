@@ -17,7 +17,7 @@ varNames = {
 nVars = numel(varNames);
 
 nMovies = size(binnedData,1);
-maxN_global = nMovies;
+minN = ceil(0.7*nMovies);
 
 nTimes  = size(binnedData,2);
 
@@ -32,6 +32,8 @@ stackData = struct();
 for v = 1:nVars
     stackData.(varNames{v}) = nan(nBins,nBins,nMovies);
 end
+stackData.cell_presence = false(nBins,nBins,nMovies);
+stackData.valid_tissue = false(nBins,nBins,nMovies);
 
 for m = 1:nMovies
 
@@ -57,14 +59,23 @@ for m = 1:nMovies
         d = binnedData{m,t};
         if isempty(d), continue; end
 
-        valid = ~isnan(d.cells.count);
+        % Spatial validity comes from tissue classification
+        valid = d.tissue.validBinMask;
 
+        % Store tissue mask
+        stackData.valid_tissue(:,:,m) = ...
+            stackData.valid_tissue(:,:,m) | valid;
+
+
+        % Cell counts
         c = d.cells.count;
         c(~valid)=0;
 
+        % Cell area
         a = d.cells.areaSum;
         a(~valid)=0;
 
+        % Events
         e = d.extrusions.count;
         e(~valid)=0;
 
@@ -87,9 +98,25 @@ for m = 1:nMovies
             ii=r(k);
             jj=cbin(k);
 
-            areaStack{ii,jj}=[areaStack{ii,jj}; d.cells.area{ii,jj}(:)];
-            eccStack{ii,jj} =[eccStack{ii,jj}; d.cells.eccentricity{ii,jj}(:)];
-            oriStack{ii,jj} =[oriStack{ii,jj}; d.cells.orientation{ii,jj}(:)];
+            % Track bins with cells
+            if c(ii,jj)>0
+                stackData.cell_presence(ii,jj,m)=true;
+            end
+
+            if ~isempty(d.cells.area{ii,jj})
+                areaStack{ii,jj}=[areaStack{ii,jj}; ...
+                    d.cells.area{ii,jj}(:)];
+            end
+
+            if ~isempty(d.cells.eccentricity{ii,jj})
+                eccStack{ii,jj}=[eccStack{ii,jj}; ...
+                    d.cells.eccentricity{ii,jj}(:)];
+            end
+
+            if ~isempty(d.cells.orientation{ii,jj})
+                oriStack{ii,jj}=[oriStack{ii,jj}; ...
+                    d.cells.orientation{ii,jj}(:)];
+            end
 
         end
     end
@@ -212,30 +239,27 @@ function update()
             x = squeeze(A(i,j,:));
             y = squeeze(B(i,j,:));
 
-            ok = isfinite(x) & isfinite(y);
+            validTissue = squeeze(stackData.valid_tissue(i,j,:));
+
+            ok = isfinite(x) & isfinite(y) & validTissue;
 
             N(i,j) = sum(ok);
 
-            if N(i,j) < 5   % stricter threshold (important!)
-                continue
+            if N(i,j) >= minN  % stricter threshold (important!)
+                [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
+                    'Type','Spearman', 'Rows','complete');
             end
-            
-            [R(i,j), P(i,j)] = corr(x(ok), y(ok), ...
-                'Type','Spearman', 'Rows','complete');
-            %% FDR correction
-
-            validP = isfinite(P);
-
-            Pvec = P(validP);
-
-            P_FDR_vec = mafdr(Pvec,'BHFDR',true);
-
-            P_FDR = nan(size(P));
-
-            P_FDR(validP) = P_FDR_vec;
 
         end
+
     end
+    
+    %% FDR correction
+    validP = isfinite(P);
+    Pvec = P(validP);
+    P_FDR_vec = mafdr(Pvec,'BHFDR',true);
+    P_FDR = nan(size(P));
+    P_FDR(validP) = P_FDR_vec;
 
     mode = popupMode.Value;
 
@@ -294,7 +318,7 @@ function update()
         delete(findall(ax,'Tag','SigBoundary'));
 
         colormap(ax, hot)
-        caxis([0 maxN_global])
+        caxis([0 prctile(N(:),95)])
         titleStr = 'Sample size (N)';
     end
 
