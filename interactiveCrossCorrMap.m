@@ -510,12 +510,6 @@ end
                 % Significant bins after FDR correction
                 sigMask = movieResults.MovieP_FDR < 0.05;
 
-
-                % optional robustness filter:
-                % require enough movies
-                sigMask = sigMask & (BestNmovies >= ceil(0.7*nMovies));
-
-
                 hold(ax,'on')
 
                 for i = 1:nBins
@@ -541,11 +535,13 @@ end
 
             case 7
                 
-                sigMask = movieResults.MovieP_FDR < 0.05;
+                sigMask = movieResults.MovieP_FDR < 0.05 & ...
+          isfinite(movieResults.MovieP_FDR);
                 displayMap = movieResults.MedianMovieLag;
                 displayMap(~sigMask) = NaN;
 
                 hImg.CData = displayMap;
+                hImg.AlphaData = isfinite(displayMap);
 
                 colormap(ax,parula)
 
@@ -556,39 +552,45 @@ end
 
             case 8
                 
-                sigMask = movieResults.MovieP_FDR < 0.05;
+                sigMask = movieResults.MovieP_FDR < 0.05 & ...
+          isfinite(movieResults.MovieP_FDR);
 
                 displayMap = movieResults.LagVariability;
                 displayMap(~sigMask) = NaN;
 
                 hImg.CData = displayMap;
+                hImg.AlphaData = isfinite(displayMap);
 
-                colormap(ax,hot)
+                colormap(ax,parula)
                 caxis(ax,[0 max(movieResults.LagVariability(:),[],'omitnan')])
                 titleStr = 'Lag variability (IQR)';
 
             case 9
-                sigMask = movieResults.MovieP_FDR < 0.05;
+                sigMask = movieResults.MovieP_FDR < 0.05 & ...
+          isfinite(movieResults.MovieP_FDR);
 
                 displayMap = movieResults.NegativeFraction;
                  displayMap(~sigMask) = NaN;
 
                 hImg.CData = displayMap;
+                hImg.AlphaData = isfinite(displayMap);
 
-                colormap(ax,hot)
+                colormap(ax,parula)
 
                 caxis([0 1])
 
                 titleStr = 'Fraction of movies with R<-0.3';
             case 10
-                sigMask = movieResults.MovieP_FDR < 0.05;
+                sigMask = movieResults.MovieP_FDR < 0.05 & ...
+          isfinite(movieResults.MovieP_FDR);
                 
                 displayMap = movieResults.PositiveFraction;
                 displayMap(~sigMask) = NaN;
 
                 hImg.CData = displayMap;
+                hImg.AlphaData = isfinite(displayMap);
 
-                colormap(ax,hot)
+                colormap(ax,parula)
                 caxis([0 1])
 
                 titleStr='Fraction of movies with R>0.3';
@@ -662,38 +664,39 @@ end
 
                     case 7
 
-                        hText(i,j).String = sprintf('%.1f',...
-                            movieResults.MedianMovieLag(i,j));
-                    if ~sigMask(i,j)
-                        hText(i,j).String='';
-                        continue
-                    end
+                        if ~sigMask(i,j)
+                            hText(i,j).String='';
+                        else
+                            hText(i,j).String = sprintf('%.1f',...
+                                movieResults.MedianMovieLag(i,j));
+                        end
 
                     case 8
 
-                        hText(i,j).String = sprintf('%.1f',...
-                            movieResults.LagVariability(i,j));
+
                         if ~sigMask(i,j)
                             hText(i,j).String='';
-                            continue
+                        else
+                            hText(i,j).String = sprintf('%.1f',...
+                                movieResults.LagVariability(i,j));
                         end
 
                     case 9
 
-                        hText(i,j).String = sprintf('%.0f%%',...
-                            100*movieResults.NegativeFraction(i,j));
                         if ~sigMask(i,j)
                             hText(i,j).String='';
-                            continue
+                        else
+                             hText(i,j).String = sprintf('%.0f%%',...
+                            100*movieResults.NegativeFraction(i,j));
                         end
 
                     case 10
 
-                        hText(i,j).String=sprintf('%.0f%%',...
-                            100*movieResults.PositiveFraction(i,j));
                         if ~sigMask(i,j)
                             hText(i,j).String='';
-                            continue
+                        else
+                            hText(i,j).String=sprintf('%.0f%%',...
+                                100*movieResults.PositiveFraction(i,j));
                         end
 
                 end
