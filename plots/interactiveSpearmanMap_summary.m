@@ -652,6 +652,29 @@ update();
 
         filepath = fullfile(saveFolder,filename);
 
+        %% Improve figure appearance before export
+
+        % Increase figure size
+        fig.Position = [100 100 1200 1000];
+
+        % Axis tick labels
+        ax.FontSize = 18;
+
+        % Colorbar font size
+        cb = colorbar(ax);
+        cb.FontSize = 18;
+
+        % Increase text inside bins
+        for ii = 1:nBins
+            for jj = 1:nBins
+                hText(ii,jj).FontSize = 14;
+                hText(ii,jj).FontWeight = 'bold';
+            end
+        end
+
+        % Improve rendering
+        set(fig,'Renderer','painters')
+
         exportgraphics(fig,filepath,...
             'Resolution',300);
 
