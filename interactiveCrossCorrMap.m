@@ -280,7 +280,7 @@ end
             % PER MOVIE ANALYSIS
             %% =====================================================
 
-            movieFile = fullfile(saveFolder,...
+            movieFile = fullfile(filepath, saveFolder,...
                 ['MovieLag_' variablePair '.mat']);
 
 
