@@ -11,7 +11,7 @@ varNames = {
     'cv_eccentricity'
     'orientation'
     'cv_orientation'
-    'mean_cells'
+    'cells'
 };
 
 nVars = numel(varNames);
@@ -166,7 +166,7 @@ stackData.divisions(:,:,m)=sumDiv;
     stackData.cv_orientation(:,:,m)=cvOri;
 
     sumCells(~stackData.valid_tissue(:,:,m)) = NaN;
-    stackData.mean_cells(:,:,m)=sumCells;
+    stackData.cells(:,:,m)=sumCells;
 
 end
 
@@ -185,7 +185,7 @@ totalMaps.divisions  = sum(stackData.divisions,3,'omitnan');
 medianMaps.extrusions = median(stackData.extrusions,3,'omitnan');
 medianMaps.divisions  = median(stackData.divisions,3,'omitnan');
 
-medianMaps.cells = median(stackData.mean_cells,3,'omitnan');
+medianMaps.cells = median(stackData.cells,3,'omitnan');
 medianMaps.mean_area = median(stackData.mean_area,3,'omitnan');
 medianMaps.cv_area = median(stackData.cv_area,3,'omitnan');
 medianMaps.mean_eccentricity = median(stackData.mean_eccentricity,3,'omitnan');
@@ -611,9 +611,53 @@ end
 %% CALLBACKS
 popup1.Callback = @(~,~) update();
 popup2.Callback = @(~,~) update();
+%% SAVE FIGURE BUTTON
+
+saveButton = uicontrol(fig,...
+    'Style','pushbutton',...
+    'String','Save Figure',...
+    'Units','normalized',...
+    'Position',[0.85 0.4 0.13 0.05],...
+    'Callback',@saveFigure);
 
 %% INIT
 update();
+
+%% =========================================================
+% SAVE CURRENT FIGURE
+%% =========================================================
+
+    function saveFigure(~,~)
+
+        v1 = varNames{popup1.Value};
+        v2 = varNames{popup2.Value};
+
+        modeNames = popupMode.String;
+        modeName = modeNames{popupMode.Value};
+
+        % Clean filename
+        modeName = strrep(modeName,' ','_');
+        modeName = strrep(modeName,'/','_');
+
+        filename = sprintf('%s_vs_%s_%s.png',...
+            v1,...
+            v2,...
+            modeName);
+
+        saveFolder = 'SavedFigures';
+
+        if ~exist(saveFolder,'dir')
+            mkdir(saveFolder)
+        end
+
+        filepath = fullfile(saveFolder,filename);
+
+        exportgraphics(fig,filepath,...
+            'Resolution',300);
+
+        fprintf('Figure saved: %s\n',filepath)
+
+    end
 
     function cmap = blueWhiteRed()
 
