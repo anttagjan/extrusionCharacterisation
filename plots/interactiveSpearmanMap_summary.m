@@ -152,17 +152,58 @@ for m = 1:nMovies
 
     end
 
-    stackData.extrusions(:,:,m)=sumExtr;
-    stackData.divisions(:,:,m)=sumDiv;
+sumExtr(~stackData.valid_tissue(:,:,m)) = NaN;
+sumDiv(~stackData.valid_tissue(:,:,m))  = NaN;
+
+stackData.extrusions(:,:,m)=sumExtr;
+stackData.divisions(:,:,m)=sumDiv;
+
     stackData.mean_area(:,:,m)=meanArea;
     stackData.cv_area(:,:,m)=cvArea;
     stackData.mean_eccentricity(:,:,m)=meanEcc;
     stackData.cv_eccentricity(:,:,m)=cvEcc;
     stackData.orientation(:,:,m)=meanOri;
     stackData.cv_orientation(:,:,m)=cvOri;
+
+    sumCells(~stackData.valid_tissue(:,:,m)) = NaN;
     stackData.mean_cells(:,:,m)=sumCells;
 
 end
+
+%% =========================================================
+% GLOBAL SUMMARY MAPS
+%% =========================================================
+
+totalMaps = struct();
+medianMaps = struct();
+
+% total events
+totalMaps.extrusions = sum(stackData.extrusions,3,'omitnan');
+totalMaps.divisions  = sum(stackData.divisions,3,'omitnan');
+
+% median per movie
+medianMaps.extrusions = median(stackData.extrusions,3,'omitnan');
+medianMaps.divisions  = median(stackData.divisions,3,'omitnan');
+
+medianMaps.cells = median(stackData.mean_cells,3,'omitnan');
+medianMaps.mean_area = median(stackData.mean_area,3,'omitnan');
+medianMaps.cv_area = median(stackData.cv_area,3,'omitnan');
+medianMaps.mean_eccentricity = median(stackData.mean_eccentricity,3,'omitnan');
+medianMaps.cv_eccentricity = median(stackData.cv_eccentricity,3,'omitnan');
+medianMaps.orientation = median(stackData.orientation,3,'omitnan');
+medianMaps.cv_orientation = median(stackData.cv_orientation,3,'omitnan');
+
+% Number of movies per bin
+nMoviesMap = sum(stackData.valid_tissue,3);
+
+invalid = nMoviesMap == 0;
+
+totalMaps.extrusions(invalid) = NaN;
+totalMaps.divisions(invalid)  = NaN;
+
+medianMaps.extrusions(invalid) = NaN;
+medianMaps.divisions(invalid)  = NaN;
+medianMaps.cells(invalid)      = NaN;
 
 clear binnedData %Create space to save then the figure
 
@@ -213,7 +254,20 @@ popup2 = uicontrol(fig,'Style','popupmenu',...
     'Position',[0.85 0.6 0.13 0.05]);
 
 popupMode = uicontrol(fig,'Style','popupmenu',...
-    'String',{'Spearman R', 'Sample size N'},...
+    'String',{ ...
+    'Spearman R',...
+    'Sample size N',...
+    'Total extrusions',...
+    'Median extrusions/movie',...
+    'Total divisions',...
+    'Median divisions/movie',...
+    'Median cells/movie',...
+    'Median mean area/movie',...
+    'Median CV area/movie',...
+    'Median eccentricity/movie',...
+    'Median CV eccentricity/movie',...
+    'Median orientation/movie',...
+    'Median CV orientation/movie'},...
     'Units','normalized',...
     'Position',[0.85 0.5 0.13 0.05]);
 
@@ -262,8 +316,9 @@ function update()
     P_FDR(validP) = P_FDR_vec;
 
     mode = popupMode.Value;
-
-    if mode == 1
+    
+switch mode 
+    case 1
         % =========================
         % SPEARMAN R
         % =========================
@@ -309,18 +364,198 @@ function update()
 
         hold(ax,'off')
 
-    elseif mode == 2
+    case 2
 
         % =========================
         % SAMPLE SIZE
         % =========================
         hImg.CData = N;
+        hImg.AlphaData = isfinite(N);
         delete(findall(ax,'Tag','SigBoundary'));
 
-        colormap(ax, hot)
-        caxis([0 prctile(N(:),95)])
+        colormap(ax, parula)
+        caxis([0 max(N(:))])
         titleStr = 'Sample size (N)';
+    case 3
+
+    displayMap = totalMaps.extrusions;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Total extrusions';
+
+
+case 4
+
+    displayMap = medianMaps.extrusions;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median extrusions/movie';
+
+
+case 5
+
+    displayMap = totalMaps.divisions;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Total divisions';
+
+
+case 6
+
+    displayMap = medianMaps.divisions;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median divisions/movie';
+case 7
+
+    displayMap = medianMaps.cells;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median cells/movie';
+
+
+case 8
+
+    displayMap = medianMaps.mean_area;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median average area/movie';
+
+
+case 9
+
+    displayMap = medianMaps.cv_area;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median CV area/movie';
+
+
+case 10
+
+    displayMap = medianMaps.mean_eccentricity;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([min(displayMap(:),[],'omitnan') max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median average eccentricity/movie';
+
+
+case 11
+
+    displayMap = medianMaps.cv_eccentricity;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([min(displayMap(:),[],'omitnan') max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median CV eccentricity/movie';
+
+
+case 12
+
+    displayMap = medianMaps.orientation;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([min(displayMap(:),[],'omitnan') ...
+           max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median average orientation/movie';
+
+
+case 13
+
+    displayMap = medianMaps.cv_orientation;
+
+    hImg.CData = displayMap;
+    hImg.AlphaData = isfinite(displayMap);
+
+    colormap(ax,parula)
+    caxis([0 max(displayMap(:),[],'omitnan')])
+
+    titleStr='Median CV orientation/movie';
+
+end
+
+if ~exist('displayMap','var')
+    displayMap = nan(nBins);
+end
+%% =========================================================
+% MOVIE COVERAGE BOUNDARIES
+% Only for summary maps
+%% =========================================================
+
+delete(findall(ax,'Tag','CoverageBoundary'));
+
+
+if mode >= 3
+
+    coverageMask = nMoviesMap >= ceil(0.7*nMovies);
+
+
+    hold(ax,'on')
+
+    for i = 1:nBins
+        for j = 1:nBins
+
+            if coverageMask(i,j)
+
+                rectangle(ax,...
+                    'Position',[j-0.5 i-0.5 1 1],...
+                    'EdgeColor','k',...
+                    'LineWidth',2,...
+                    'Tag','CoverageBoundary');
+
+            end
+
+        end
     end
+
+    hold(ax,'off')
+
+end
 
     for i = 1:nBins
         for j = 1:nBins
@@ -344,6 +579,23 @@ function update()
 
                 case 2  % N
                     hText(i,j).String = sprintf('%d', N(i,j));
+                case {3,4,5,6,7,8,9,10,11,12,13}
+
+                    if isnan(displayMap(i,j))
+                        hText(i,j).String='';
+                    else
+
+                        if ismember(mode,[3 5 7 8])
+                            % eventos enteros
+                            hText(i,j).String=sprintf('%.0f',displayMap(i,j));
+                        elseif ismember(mode,[9 10 11])
+                            hText(i,j).String=sprintf('%.2f',displayMap(i,j));
+                        else
+                            % parámetros continuos
+                            hText(i,j).String=sprintf('%.1f',displayMap(i,j));
+                        end
+
+                    end
 
             end
 
