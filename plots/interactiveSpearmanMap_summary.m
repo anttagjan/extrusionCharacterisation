@@ -652,27 +652,22 @@ update();
 
         filepath = fullfile(saveFolder,filename);
 
-        %% Improve figure appearance before export
+        %% Improve figure appearance before export (without changing bin text)
 
         % Increase figure size
         fig.Position = [100 100 1200 1000];
 
-        % Axis tick labels
+        % Increase axis tick labels
         ax.FontSize = 18;
 
-        % Colorbar font size
+        % Increase colorbar numbers
         cb = colorbar(ax);
         cb.FontSize = 18;
 
-        % Increase text inside bins
-        for ii = 1:nBins
-            for jj = 1:nBins
-                hText(ii,jj).FontSize = 14;
-                hText(ii,jj).FontWeight = 'bold';
-            end
-        end
+        % Keep bin text unchanged
+        % (do not modify hText.FontSize)
 
-        % Improve rendering
+        % Better export quality
         set(fig,'Renderer','painters')
 
         exportgraphics(fig,filepath,...
